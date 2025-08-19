@@ -1,0 +1,34 @@
+Windows Registry Editor Version 5.00
+
+; 이미지 파일 우클릭 메뉴에 "AI Upscale 4x" 추가
+; JPG 파일
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.jpg\shell\AIUpscale4x]
+@="AI Upscale 4x (GPU)"
+"Icon"="D:\\Workspace\\Upscaler\\.venv\\Scripts\\python.exe"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.jpg\shell\AIUpscale4x\command]
+@="\"D:\\Workspace\\Upscaler\\.venv\\Scripts\\python.exe\" -m upscaler image \"%1\" \"%1_4x.jpg\" --scale 4"
+
+; PNG 파일
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.png\shell\AIUpscale4x]
+@="AI Upscale 4x (GPU)"
+"Icon"="D:\\Workspace\\Upscaler\\.venv\\Scripts\\python.exe"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.png\shell\AIUpscale4x\command]
+@="\"D:\\Workspace\\Upscaler\\.venv\\Scripts\\python.exe\" -m upscaler image \"%1\" \"%1_4x.png\" --scale 4"
+
+; JPEG 파일
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.jpeg\shell\AIUpscale4x]
+@="AI Upscale 4x (GPU)"
+"Icon"="D:\\Workspace\\Upscaler\\.venv\\Scripts\\python.exe"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.jpeg\shell\AIUpscale4x\command]
+@="\"D:\\Workspace\\Upscaler\\.venv\\Scripts\\python.exe\" -m upscaler image \"%1\" \"%1_4x.jpeg\" --scale 4"
+
+; MP4 비디오
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mp4\shell\AIUpscale4x]
+@="AI Upscale 4x Video (GPU)"
+"Icon"="D:\\Workspace\\Upscaler\\.venv\\Scripts\\python.exe"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mp4\shell\AIUpscale4x\command]
+@="\"D:\\Workspace\\Upscaler\\.venv\\Scripts\\python.exe\" -m upscaler video \"%1\" \"%1_4x.mp4\" --scale 4 --copy-audio"

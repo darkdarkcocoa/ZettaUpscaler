@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(codex exec --skip-git-repo-check \"\n문제: ComfyUI에서 영상 생성 시 업스케일링으로 인한 속도 저하 문제 해결을 위해 별도의 Python CLI 영상 업스케일링 프로그램 개발 필요\n\n제 제안: Real-ESRGAN을 기반으로 한 CLI 도구 개발\n- 장점: GPU 가속 지원, 영상 처리에 최적화됨, 활발한 개발, 다양한 사전훈련 모델\n- 대안들: ESRGAN, Waifu2x, BasicSR 프레임워크\n\n근거: \n1. Real-ESRGAN은 영상 처리에 특화되어 있음\n2. 기존 CLI 도구가 있어 참조 가능\n3. PyTorch 기반으로 Python 통합 용이\n4. ComfyUI와 호환성 좋음\n\n이 접근법에 동의하시나요? 다른 추천 오픈소스나 개선점이 있다면 구체적 이유와 함께 제시해주세요.\")",
+      "Bash(codex exec:*)",
+      "Bash(where upscaler)",
+      "Bash(python test_model_loading.py:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(upscaler:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(source:*)",
+      "Bash(.venv/Scripts/python:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "/mnt/d/Workspace/upscalertest"
+    ]
+  }
+}
