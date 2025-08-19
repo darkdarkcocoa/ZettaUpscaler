@@ -69,7 +69,7 @@ def load_realesrgan_model(model_path, device='cuda', scale=4):
     return model
 
 
-def upscale_image(model, img, device='cuda', scale=4, gamma=0.9):
+def upscale_image(model, img, device='cuda', scale=4, gamma=1.7):
     """Upscale image using model with proper color correction"""
     
     # Try to import color correction utilities
@@ -97,7 +97,7 @@ def upscale_image(model, img, device='cuda', scale=4, gamma=0.9):
     
     # Apply gamma correction for brightness
     if gamma != 1.0:
-        output = torch.pow(output, gamma)
+        output = torch.pow(output, 1.0/gamma)  # Correct gamma formula
     
     # Convert to numpy with proper linear to sRGB conversion
     output_np = output.numpy().transpose(1, 2, 0)

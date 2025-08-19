@@ -95,7 +95,7 @@ class TorchBackend(BaseBackend):
         logger.debug(f"Input tile shape: {tile.shape}, dtype: {tile.dtype}, range: [{tile.min()}, {tile.max()}]")
         
         # Get gamma value from kwargs
-        gamma = self.kwargs.get('gamma', 0.9)  # Default to slightly brighter
+        gamma = self.kwargs.get('gamma', 1.7)  # Default brightness compensation for proper color
         
         try:
             # Use the wrapper's upscale_image function which handles all color correction
