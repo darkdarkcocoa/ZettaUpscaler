@@ -11,7 +11,12 @@
       "Bash(pip install:*)",
       "Bash(pip3 install:*)",
       "Bash(source:*)",
-      "Bash(.venv/Scripts/python:*)"
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(.venv/Scripts/upscaler.exe:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": [],

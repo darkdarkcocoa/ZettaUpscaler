@@ -8,7 +8,7 @@ from typing import Dict, Any
 
 from .base import BaseBackend
 from ..models import ModelManager
-from .realesrgan_wrapper_improved import load_realesrgan_model, upscale_image
+from .realesrgan_wrapper import load_realesrgan_model, upscale_image
 
 
 logger = logging.getLogger(__name__)

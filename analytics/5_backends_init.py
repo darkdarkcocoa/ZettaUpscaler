@@ -3,9 +3,7 @@ from typing import Optional
 
 from .torch_backend import TorchBackend
 from .torch_backend_simple import SimpleTorchBackend
-from .torch_backend_official import TorchBackendOfficial
 from .ncnn_backend import NcnnBackend
-from .official_backend import OfficialBackend
 
 
 logger = logging.getLogger(__name__)
@@ -16,19 +14,18 @@ def get_backend(backend_name: str = 'auto', **kwargs):
     
     if backend_name == 'auto':
         # Try backends in order of preference
-        # First try official implementation (Gemini DeepThink solution)
-        if TorchBackendOfficial.is_available():
-            logger.info("Using Official PyTorch backend (RealESRGANer)")
-            return TorchBackendOfficial(**kwargs)
-        # Then try improved TorchBackend with architecture detection
-        elif TorchBackend.is_available():
-            logger.info("Using PyTorch backend with architecture detection")
-            return TorchBackend(**kwargs)
-        elif NcnnBackend.is_available():
+        if NcnnBackend.is_available():
             logger.info("Using NCNN backend (Vulkan available)")
             return NcnnBackend(**kwargs)
+        elif TorchBackend.is_available():
+            logger.info("Using PyTorch backend with Real-ESRGAN")
+            return TorchBackend(**kwargs)
+        elif SimpleTorchBackend.is_available():
+            logger.warning("Using simplified PyTorch backend (fallback mode)")
+            logger.warning("For best quality, ensure Real-ESRGAN is properly installed")
+            return SimpleTorchBackend(**kwargs)
         else:
-            logger.warning("No AI backends available, using basic interpolation")
+            logger.warning("No backends available, using basic upscaling")
             return SimpleTorchBackend(device='cpu', **kwargs)
     
     elif backend_name == 'torch':

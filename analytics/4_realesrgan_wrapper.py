@@ -63,16 +63,6 @@ def load_realesrgan_model(model_path, device='cuda', scale=4):
                 filtered_state_dict[k_no_module] = v
     
     model.load_state_dict(filtered_state_dict, strict=False)
-    
-    # Debug: Check how many keys were loaded
-    loaded = len(filtered_state_dict)
-    total = len(model.state_dict())
-    logger.info(f"Model loading: {loaded}/{total} keys loaded")
-    if loaded < total:
-        logger.warning(f"INCOMPLETE MODEL LOADING! Only {loaded}/{total} keys loaded - this WILL cause color distortion!")
-        missing_keys = set(model.state_dict().keys()) - set(filtered_state_dict.keys())
-        logger.warning(f"First 5 missing keys: {list(missing_keys)[:5]}")
-    
     model.to(device)
     model.eval()
     
@@ -80,21 +70,21 @@ def load_realesrgan_model(model_path, device='cuda', scale=4):
 
 
 def upscale_image(model, img, device='cuda', scale=4, gamma=1.0):
-    """Upscale image with FIXED memory contiguity (Gemini DeepThink solution)"""
+    """Upscale image using simple BGR uint8 pipeline (GPT-5 recommended)"""
+    
+    # GPT-5 advice: Real-ESRGAN expects BGR uint8 sRGB input
+    # No linear conversion, no complex gamma handling - keep it simple!
     
     # Ensure input is BGR uint8
     if img.dtype != np.uint8:
         img = np.clip(img * 255, 0, 255).astype(np.uint8)
     
-    # CRITICAL FIX: Ensure memory contiguity after transpose
-    # (H, W, C) -> (C, H, W)
-    img_chw = img.transpose(2, 0, 1)
+    # Keep original channel order - maybe the issue is elsewhere
+    # Let's try without channel conversion first
+    img_for_model = img.copy()
     
-    # !!! SOLUTION: Make array contiguous in memory !!!
-    img_chw = np.ascontiguousarray(img_chw)
-    
-    # Convert to tensor with proper memory layout
-    img_tensor = torch.from_numpy(img_chw).float() / 255.0
+    # Simple normalization: uint8 -> [0,1] float32
+    img_tensor = torch.from_numpy(img_for_model.transpose(2, 0, 1)).float() / 255.0
     img_tensor = img_tensor.unsqueeze(0).to(device)
     
     # Inference
@@ -103,14 +93,7 @@ def upscale_image(model, img, device='cuda', scale=4, gamma=1.0):
     
     # Convert back: [0,1] -> uint8
     output = output.squeeze(0).cpu().clamp(0, 1)
-    output_np = output.numpy()
-    
-    # (C, H, W) -> (H, W, C)
-    output_hwc = output_np.transpose(1, 2, 0)
-    
-    # Ensure contiguity for output as well
-    output_hwc = np.ascontiguousarray(output_hwc)
-    
-    output_result = (output_hwc * 255).astype(np.uint8)
+    output_np = output.numpy().transpose(1, 2, 0)
+    output_result = (output_np * 255).astype(np.uint8)
     
     return output_result

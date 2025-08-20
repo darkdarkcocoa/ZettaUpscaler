@@ -49,7 +49,7 @@ class ImageProcessor:
         print_info("Input Resolution", f"{width} x {height}", indent=2)
         print_info("Color Channels", f"{channels} channels", indent=2)
         
-        # [TEST] Try RGB format - Real-ESRGAN might expect RGB (Grok4 opinion)
+        # Try RGB format instead of BGR - maybe the model expects RGB after all
         image_for_processing = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
         
         # Get backend
@@ -80,8 +80,8 @@ class ImageProcessor:
                 pbar = tqdm(total=1, desc="Upscaling in progress", unit="image")
             
             try:
-                # Upscale (returns RGB since input is RGB)
-                upscaled_rgb = self.backend.upscale(image_for_processing)
+                # Upscale
+                upscaled_bgr = self.backend.upscale(image_for_processing)
                 
                 # Optional: Match histogram to preserve original color tone
                 preserve_tone = self.kwargs.get('preserve_tone', True)
@@ -89,19 +89,19 @@ class ImageProcessor:
                     try:
                         from ..utils.color_correction import match_histogram
                         # Resize original for histogram matching
-                        h_up, w_up = upscaled_rgb.shape[:2]
+                        h_up, w_up = upscaled_bgr.shape[:2]
                         original_resized = cv2.resize(image_for_processing, (w_up, h_up), interpolation=cv2.INTER_LINEAR)
-                        upscaled_rgb = match_histogram(upscaled_rgb, original_resized)
+                        upscaled_bgr = match_histogram(upscaled_bgr, original_resized)
                         logger.info("Applied histogram matching to preserve color tone")
                     except Exception as e:
                         logger.warning(f"Could not apply histogram matching: {e}")
                 
                 # Face enhancement if requested
                 if self.kwargs.get('face_enhance', False):
-                    upscaled_rgb = self._enhance_faces(upscaled_rgb)
+                    upscaled_bgr = self._enhance_faces(upscaled_bgr)
                 
-                # [TEST] Convert RGB back to BGR for saving
-                upscaled_bgr = cv2.cvtColor(upscaled_rgb, cv2.COLOR_RGB2BGR)
+                # Convert RGB back to BGR for OpenCV saving
+                upscaled_bgr = cv2.cvtColor(upscaled_bgr, cv2.COLOR_RGB2BGR)
                 
                 # Save result with high quality
                 output_file = Path(output_path)
