@@ -1,5 +1,5 @@
 # PATH에 Upscaler 디렉토리 추가 스크립트
-$upscalerPath = "D:\Workspace\Upscaler"
+$upscalerPath = $PSScriptRoot
 $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
 
 if ($currentPath -notlike "*$upscalerPath*") {
