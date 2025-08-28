@@ -187,6 +187,9 @@ gfpgan-*.pth
 # Windows specific
 nul
 
+# Claude Code settings (personal)
+.claude/
+
 # Keep only source code and documentation
 !upscaler/**/*.py
 !requirements.txt
