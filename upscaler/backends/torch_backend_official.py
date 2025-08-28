@@ -40,6 +40,7 @@ class TorchBackendOfficial(BaseBackend):
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = device
+        self.cuda_available = (device == 'cuda' and torch.cuda.is_available())
         
         self.upscaler = None
         self.model_manager = ModelManager()
@@ -50,6 +51,12 @@ class TorchBackendOfficial(BaseBackend):
         return OFFICIAL_IMPLEMENTATION_AVAILABLE
     
     def initialize(self) -> None:
+        # Re-check CUDA availability
+        self.cuda_available = (self.device == 'cuda' and torch.cuda.is_available())
+        if self.cuda_available:
+            logger.info(f"CUDA is available! Using GPU: {torch.cuda.get_device_name(0)}")
+        else:
+            logger.warning("CUDA not available or device set to CPU")
         """Initialize the model using RealESRGANer."""
         if not self.is_available():
             raise RuntimeError("Dependencies (basicsr, realesrgan) missing for Official TorchBackend.")

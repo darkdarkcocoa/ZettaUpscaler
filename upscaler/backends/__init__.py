@@ -5,7 +5,7 @@ from .torch_backend import TorchBackend
 from .torch_backend_simple import SimpleTorchBackend
 from .torch_backend_official import TorchBackendOfficial
 from .ncnn_backend import NcnnBackend
-from .official_backend import OfficialBackend
+# from .official_backend import OfficialBackend  # 파일이 없어서 주석처리
 
 
 logger = logging.getLogger(__name__)

@@ -4,185 +4,159 @@
 [![CUDA](https://img.shields.io/badge/CUDA-12.1-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A high-performance AI-powered video and image upscaling tool using Real-ESRGAN. Supports GPU acceleration with NVIDIA GPUs for real-time upscaling up to 4x resolution.
+Real-ESRGAN 기반 고성능 AI 이미지/영상 업스케일링 도구. NVIDIA GPU 가속으로 최대 4배 해상도 업스케일링 지원.
 
-## ✨ Features
+## ✨ 주요 기능
 
-- 🎨 **AI-Powered Upscaling**: Uses Real-ESRGAN models for high-quality upscaling
-- 🎮 **GPU Acceleration**: Automatic NVIDIA GPU detection and optimization
-- 📹 **Video Support**: Process entire videos with audio preservation
-- 🖼️ **Batch Processing**: Handle multiple images efficiently
-- 🔧 **Multiple Models**: Choose from different models for photos, anime, or general content
-- 💻 **Cross-Platform**: Works on Windows, with CPU fallback for non-NVIDIA systems
+- 🎨 **AI 업스케일링**: Real-ESRGAN 모델로 고품질 업스케일링
+- 🎮 **GPU 가속**: NVIDIA GPU 자동 감지 및 최적화 (FP16 기본 활성화)
+- 📹 **영상 지원**: 오디오 보존하며 전체 영상 처리
+- 🖼️ **배치 처리**: 여러 이미지 효율적 처리
+- 🔧 **다양한 모델**: 사진, 애니메이션, 일반 콘텐츠용 모델 선택
+- 💻 **크로스 플랫폼**: Windows 지원, CPU 폴백 기능
 
-## 📸 Examples
+## 🚀 빠른 시작 (Windows)
 
-| Original (736×1104) | 4x Upscaled (2944×4416) |
-|---------------------|-------------------------|
-| ![Original](docs/original.jpg) | ![Upscaled](docs/upscaled.jpg) |
+### 1️⃣ 설치 (1분 완성!)
 
-## 🚀 Quick Start
-
-### For Users (Windows EXE)
-
-1. Download the latest release from [Releases](https://github.com/darkdarkcocoa/ZettaUpscaler/releases)
-2. Extract the ZIP file
-3. Run the upscaler:
 ```bash
-upscaler.exe image input.jpg output.jpg --scale 4
-upscaler.exe video input.mp4 output.mp4 --scale 4 --copy-audio
-```
-
-### For Developers
-
-#### Prerequisites
-- Python 3.12
-- NVIDIA GPU with CUDA 12.1 support (optional, for GPU acceleration)
-- FFmpeg (for video processing)
-
-#### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/darkdarkcocoa/ZettaUpscaler.git
+# 1. 저장소 클론
+git clone https://github.com/username/ZettaUpscaler.git
 cd ZettaUpscaler
+
+# 2. 자동 설치 실행 (관리자 권한 필요)
+# 마우스 우클릭 → "관리자로 실행"
+install.bat
 ```
 
-2. Create a virtual environment:
-```bash
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# or
-source .venv/bin/activate  # Linux/Mac
-```
+**install.bat가 자동으로 설치하는 항목:**
+- Python 3.12 (없는 경우)
+- FFmpeg
+- Python 가상환경
+- 모든 필수 패키지 (PyTorch, Real-ESRGAN 등)
+- 환경변수 안전 설정
 
-3. Install dependencies:
-```bash
-# For GPU support (NVIDIA)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-pip install -r requirements.txt
+### 2️⃣ 사용법
 
-# For CPU only
-pip install torch torchvision
-pip install -r requirements.txt
-```
-
-4. Fix compatibility issues (if needed):
-```bash
-python fix_compatibility.py
-```
-
-5. Run the upscaler:
-```bash
-python -m upscaler image input.jpg output.jpg --scale 4
-python -m upscaler video input.mp4 output.mp4 --scale 4
-```
-
-## 📖 Usage
-
-### Command Line Interface
+설치 완료 후 `upscaler.bat`로 실행:
 
 ```bash
-# Basic image upscaling
+# 이미지 업스케일링 (4배)
 upscaler image input.jpg output.jpg --scale 4
 
-# Video upscaling with audio
-upscaler video input.mp4 output.mp4 --scale 4 --copy-audio
+# 2배로 업스케일링 (더 빠름)
+upscaler image photo.jpg photo_2x.jpg --scale 2
 
-# Use specific model
-upscaler image anime.jpg anime_4x.jpg --model realesrgan-x4plus-anime
+# 영상 업스케일링 (오디오 포함)
+upscaler video input.mp4 output.mp4 --scale 4
 
-# Advanced options
-upscaler image photo.jpg photo_4x.jpg \
-    --scale 4 \
-    --model realesrgan-x4plus \
-    --tile 256 \
-    --fp16 \
-    --face-enhance
+# GPU 가속 확인
+upscaler doctor
 ```
 
-### Available Models
+### 3️⃣ 어디서든 사용하기
 
-| Model | Best For | Scale |
-|-------|----------|-------|
-| `realesr-general-x4v3` | General purpose (default) | 4x |
-| `realesrgan-x4plus` | Photographs | 4x |
-| `realesrgan-x4plus-anime` | Anime/illustrations | 4x |
-| `gfpgan-1.4` | Face enhancement | 1x |
+새 명령 프롬프트에서:
+```bash
+# PATH에 추가 (현재 세션만)
+add-to-path.bat
 
-### Options
+# 이제 어디서든 사용 가능!
+upscaler image C:\Photos\vacation.jpg C:\Photos\vacation_4k.jpg
+```
 
-- `--scale`: Upscaling factor (2 or 4, default: 4)
-- `--model`: Model to use for upscaling
-- `--tile`: Tile size for processing (0 for auto)
-- `--tile-overlap`: Tile overlap in pixels (default: 32)
-- `--face-enhance`: Enable face enhancement with GFPGAN
-- `--fp16`: Use half precision for lower VRAM usage
-- `--backend`: Force specific backend (auto/torch/ncnn)
-- `--copy-audio`: Copy audio from input video (default: true)
+## 📊 성능
 
-## 🛠️ Building from Source
+RTX 4060 Ti 기준 (1080p → 4K):
+- **이미지** (1920×1080): 약 1.5-2초
+- **영상** (1080p, 1분): 약 3-5분
 
-### Build Executable (Windows)
+RTX 4090 기준:
+- 약 30-40% 더 빠름
+
+## 🛠️ 고급 옵션
 
 ```bash
-# Install PyInstaller
-pip install pyinstaller
+# 모든 옵션 보기
+upscaler --help
 
-# Build release version
-build-release.bat
+# 사용 가능한 모델 확인
+upscaler models --list
 
-# Output will be in: releases/upscaler-1.0.0-win64.zip
+# 시스템 진단
+upscaler doctor
 ```
 
-## 🎮 GPU Compatibility
+### 주요 옵션
+- `--scale`: 업스케일 배율 (2 또는 4, 기본값: 4)
+- `--model`: 사용할 모델 선택
+- `--fp16`: GPU 메모리 절약 (기본: 활성화)
+- `--tile`: 타일 크기 (메모리 부족시 조정)
+- `--face-enhance`: 얼굴 향상 기능
 
-| GPU Series | Support | Performance |
-|------------|---------|-------------|
-| RTX 40 Series (4090, 4080, 4070, 4060) | ✅ Excellent | Fastest |
-| RTX 30 Series (3090, 3080, 3070, 3060) | ✅ Excellent | Fast |
-| RTX 20 Series (2080 Ti, 2070, 2060) | ✅ Good | Fast |
-| GTX 16 Series (1660, 1650) | ✅ Good | Moderate |
-| GTX 10 Series (1080 Ti, 1070, 1060) | ⚠️ Limited | Slow |
-| AMD Radeon | ❌ CPU Only | Very Slow |
-| Intel Arc/Iris | ❌ CPU Only | Very Slow |
+## 🎯 사용 예시
 
-## 📊 Performance
+### 사진 고화질화
+```bash
+upscaler image family_photo.jpg family_photo_hd.jpg --model realesrgan-x4plus
+```
 
-Performance on RTX 4060 Ti (1080p → 4K upscaling):
-- Image (1920×1080): ~5-7 seconds
-- Video (1080p, 1 minute): ~3-5 minutes
+### 애니메이션 업스케일
+```bash
+upscaler image anime.png anime_4k.png --model realesrgan-x4plus-anime
+```
 
-## 🤝 Contributing
+### 영상 업스케일 (오디오 포함)
+```bash
+upscaler video vacation.mp4 vacation_4k.mp4 --scale 4 --copy-audio
+```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## ⚠️ 주의사항
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. **Python 버전**: Python 3.12 필수 (3.10/3.11은 호환성 문제 발생)
+2. **GPU 메모리**: 4K 업스케일시 최소 6GB VRAM 권장
+3. **디스크 공간**: 영상 처리시 충분한 임시 공간 필요
+4. **환경변수**: setx 사용 금지 (PATH 손실 위험)
 
-## 📄 License
+## 🆘 문제 해결
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### "CUDA: Not Available" 표시
+- GPU는 사용 중이지만 표시 오류일 수 있음
+- `upscaler doctor`로 실제 상태 확인
 
-## 🙏 Acknowledgments
+### Python 버전 충돌 (ComfyUI 등)
+```bash
+# py launcher로 특정 버전 사용
+py -3.12 -m pip install ...
+```
 
-- [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) - Core upscaling models
-- [GFPGAN](https://github.com/TencentARC/GFPGAN) - Face enhancement
-- [BasicSR](https://github.com/XPixelGroup/BasicSR) - Super-resolution framework
-- [PyTorch](https://pytorch.org/) - Deep learning framework
+### 메모리 부족
+```bash
+# 타일 크기 줄이기
+upscaler image input.jpg output.jpg --tile 256
+```
 
-## 📞 Support
+## 📦 모델 정보
 
-- **Issues**: [GitHub Issues](https://github.com/darkdarkcocoa/ZettaUpscaler/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/darkdarkcocoa/ZettaUpscaler/discussions)
+| 모델 | 용도 | 배율 |
+|-----|------|-----|
+| `realesr-general-x4v3` | 일반용 (기본값) | 4x |
+| `realesrgan-x4plus` | 사진 특화 | 4x |
+| `realesrgan-x4plus-anime` | 애니메이션 특화 | 4x |
 
-## ⚠️ Disclaimer
+## 🤝 기여하기
 
-This tool uses AI models that require significant computational resources. GPU acceleration is highly recommended for practical use. Processing times on CPU-only systems may be very long.
+버그 리포트나 기능 제안은 [Issues](https://github.com/username/ZettaUpscaler/issues)에 남겨주세요!
+
+## 📄 라이선스
+
+MIT License - 자유롭게 사용하세요.
+
+## 🙏 감사의 말
+
+- [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) - 핵심 업스케일링 모델
+- [PyTorch](https://pytorch.org/) - 딥러닝 프레임워크
 
 ---
 
-Made with ❤️ by [darkdarkcocoa](https://github.com/darkdarkcocoa)
+Made with ❤️ using Real-ESRGAN

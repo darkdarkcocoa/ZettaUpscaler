@@ -42,8 +42,8 @@ def cli(verbose, debug):
               help='감마 보정 값 (1.0: 변경없음, <1.0: 밝게, >1.0: 어둡게)')
 @click.option('--preserve-tone', is_flag=True, default=True,
               help='원본 이미지의 색상 톤 유지 (히스토그램 매칭)')
-@click.option('--fp16', is_flag=True,
-              help='반정밀도(FP16) 사용')
+@click.option('--fp16', is_flag=True, default=True,
+              help='반정밀도(FP16) 사용 - GPU 가속 (기본: 켜짐)')
 @click.option('--progress', type=click.Choice(['bar', 'json']), default='bar',
               help='진행 상황 표시 형식')
 def image(input_path, output_path, **kwargs):
@@ -77,8 +77,8 @@ def image(input_path, output_path, **kwargs):
               help='감마 보정 값 (1.0: 변경없음, <1.0: 밝게, >1.0: 어둡게)')
 @click.option('--preserve-tone', is_flag=True, default=True,
               help='원본 이미지의 색상 톤 유지 (히스토그램 매칭)')
-@click.option('--fp16', is_flag=True,
-              help='반정밀도(FP16) 사용')
+@click.option('--fp16', is_flag=True, default=True,
+              help='반정밀도(FP16) 사용 - GPU 가속 (기본: 켜짐)')
 @click.option('--stdin', is_flag=True,
               help='표준 입력에서 읽기 (yuv4mpeg 형식)')
 @click.option('--stdout', is_flag=True,

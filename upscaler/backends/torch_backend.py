@@ -23,6 +23,7 @@ class TorchBackend(BaseBackend):
         if device is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = device
+        self.cuda_available = (device == 'cuda' and torch.cuda.is_available())
         
         self.model_instance = None
         self.model_manager = ModelManager()
@@ -45,7 +46,9 @@ class TorchBackend(BaseBackend):
     
     def initialize(self) -> None:
         """Initialize the model."""
-        logger.info(f"Initializing PyTorch backend with device: {self.device}")
+        # Re-check CUDA availability
+        self.cuda_available = (self.device == 'cuda' and torch.cuda.is_available())
+        logger.info(f"Initializing PyTorch backend with device: {self.device}, CUDA: {self.cuda_available}")
         
         # Download model if needed
         model_path = self.model_manager.get_model_path(self.model)

@@ -184,10 +184,12 @@ realesrgan-x4plus.pth
 realesrgan-x4plus-anime.pth
 gfpgan-*.pth
 
+# Windows specific
+nul
+
 # Keep only source code and documentation
 !upscaler/**/*.py
 !requirements.txt
 !setup.py
 !README.md
-!DEPLOYMENT.md
 !LICENSE

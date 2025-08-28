@@ -14,9 +14,5 @@ if not exist "%PYTHON_EXE%" (
     exit /b 1
 )
 
-:: Python 버전 확인 (디버깅용)
-echo Using Python: %PYTHON_EXE%
-"%PYTHON_EXE%" --version
-
 :: upscaler 실행
 "%PYTHON_EXE%" -m upscaler %*

@@ -8,6 +8,9 @@ echo.
 set VERSION=1.0.0
 set RELEASE_NAME=upscaler-%VERSION%-win64
 
+:: 프로젝트 루트로 이동
+cd /d %~dp0\..\..
+
 :: 가상환경 활성화
 call .venv\Scripts\activate.bat
 
