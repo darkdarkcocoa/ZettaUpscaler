@@ -27,6 +27,9 @@ cd ZettaUpscaler
 # 2. 자동 설치 실행 (관리자 권한 필요)
 # 마우스 우클릭 → "관리자로 실행"
 install.bat
+
+# PowerShell 선호시:
+powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
 **install.bat가 자동으로 설치하는 항목:**
