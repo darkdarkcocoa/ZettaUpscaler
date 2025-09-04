@@ -187,10 +187,17 @@ if %errorlevel% equ 0 (
     set "TORCH_INDEX=https://download.pytorch.org/whl/cu121"
     set "GPU_SUPPORT=1"
 ) else (
-    echo   [!] No NVIDIA GPU detected
-    echo       Installing CPU-only version
-    set "TORCH_INDEX=https://download.pytorch.org/whl/cpu"
-    set "GPU_SUPPORT=0"
+    echo   [ERROR] No NVIDIA GPU detected!
+    echo.
+    echo   This application requires an NVIDIA GPU to run.
+    echo   Please ensure:
+    echo   1. You have an NVIDIA GPU installed (RTX 30/40/50 series recommended)
+    echo   2. NVIDIA drivers are properly installed
+    echo   3. Try running 'nvidia-smi' in command prompt to verify
+    echo.
+    echo   Installation cannot continue without GPU.
+    pause
+    exit /b 1
 )
 
 echo.
@@ -205,12 +212,50 @@ python -m pip install --upgrade pip >nul 2>&1
 
 :: PyTorch 설치
 echo   Installing PyTorch... (this may take a few minutes)
-if "!GPU_SUPPORT!"=="1" (
-    echo   [GPU version - optimized for your NVIDIA card]
-    pip install torch==2.2.0+cu121 torchvision==0.17.0+cu121 torchaudio==2.2.0+cu121 --index-url https://download.pytorch.org/whl/cu121
-) else (
-    echo   [CPU version - no GPU acceleration]
-    pip install torch torchvision
+echo   [GPU version - optimized for your NVIDIA card]
+
+:: CUDA 12.1 시도
+pip install torch==2.2.0+cu121 torchvision==0.17.0+cu121 torchaudio==2.2.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+if %errorlevel% neq 0 (
+    echo.
+    echo   [WARNING] CUDA 12.1 installation failed, trying CUDA 11.8...
+    pip install torch==2.2.0+cu118 torchvision==0.17.0+cu118 torchaudio==2.2.0+cu118 --index-url https://download.pytorch.org/whl/cu118
+    if %errorlevel% neq 0 (
+        echo.
+        echo   [ERROR] PyTorch GPU installation failed!
+        echo.
+        echo   This could be due to:
+        echo   1. Network connection issues - check your internet
+        echo   2. Incompatible CUDA version - update your NVIDIA drivers
+        echo   3. Python version mismatch - ensure Python 3.10-3.12 is used
+        echo.
+        echo   Error details above. Please screenshot and share with IT support.
+        echo.
+        pause
+        exit /b 1
+    )
+)
+
+:: PyTorch 설치 확인
+echo.
+echo   Verifying PyTorch installation...
+python -c "import torch; print(f'  PyTorch {torch.__version__} installed successfully')" 2>nul
+if %errorlevel% neq 0 (
+    echo   [ERROR] PyTorch import failed!
+    pause
+    exit /b 1
+)
+
+:: CUDA 사용 가능 여부 확인 
+python -c "import torch; cuda_available = torch.cuda.is_available(); print(f'  CUDA Available: {cuda_available}'); exit(0 if cuda_available else 1)" 2>nul
+if %errorlevel% neq 0 (
+    echo   [ERROR] GPU detected but CUDA not available in PyTorch!
+    echo.
+    echo   This is a critical error. PyTorch cannot use your GPU.
+    echo   Please contact IT support with this error message.
+    echo.
+    pause
+    exit /b 1
 )
 
 :: 나머지 의존성 설치
