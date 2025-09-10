@@ -186,6 +186,97 @@ def create_two_column_panel(left_data: List[tuple], right_data: List[tuple],
         padding=(0, 1)
     )
 
+def display_zetta_logo():
+    """Display ZETTA MEDIA ASCII art with gradient."""
+    # 3D Slant style ASCII art for ZETTA MEDIA
+    logo_3d = [
+        r"   _____________________  ___       __  ________________  _____   ",
+        r"  /__  / ____/_  __/_  __/   |     /  |/  / ____/ __ \_ |/   |  ",
+        r"    / / __/   / /   / / / /| |    / /|_/ / __/ / / / // // /| |  ",
+        r"   / / /___  / /   / / / ___ |   / /  / / /___/ /_/ // // ___ |  ",
+        r"  /_/_____/ /_/   /_/ /_/  |_|  /_/  /_/_____/_____/___/_/  |_|  "
+    ]
+    
+    # Alternative: ANSI Shadow style with depth
+    logo_shadow = [
+        "███████╗███████╗████████╗████████╗ █████╗     ███╗   ███╗███████╗██████╗ ██╗ █████╗ ",
+        "╚══███╔╝██╔════╝╚══██╔══╝╚══██╔══╝██╔══██╗    ████╗ ████║██╔════╝██╔══██╗██║██╔══██╗",
+        "  ███╔╝ █████╗     ██║      ██║   ███████║    ██╔████╔██║█████╗  ██║  ██║██║███████║",
+        " ███╔╝  ██╔══╝     ██║      ██║   ██╔══██║    ██║╚██╔╝██║██╔══╝  ██║  ██║██║██╔══██║",
+        "███████╗███████╗   ██║      ██║   ██║  ██║    ██║ ╚═╝ ██║███████╗██████╔╝██║██║  ██║",
+        "╚══════╝╚══════╝   ╚═╝      ╚═╝   ╚═╝  ╚═╝    ╚═╝     ╚═╝╚══════╝╚═════╝ ╚═╝╚═╝  ╚═╝"
+    ]
+    
+    # Modern isometric 3D style
+    logo_iso = [
+        "╔══╗╔══╗╔══╗╔══╗╔══╗    ╔╗╔╗╔══╗╔══╗╔══╗╔══╗",
+        "╚╗─║║╔═╝╚╗─║╚╗─║║╔╗║    ║╚╝║║╔═╝║╔╗║╚╗╔╝║╔╗║",
+        " ║─║║╚═╗ ║─║ ║─║║╚╝║    ║║║║║╚═╗║║║║ ║║ ║╚╝║",
+        "╔╝─║║╔═╝ ║─║ ║─║║╔╗║    ║║║║║╔═╝║║║║ ║║ ║╔╗║",
+        "╚══╝╚══╝ ╚═╝ ╚═╝╚╝╚╝    ╚╩╩╝╚══╝╚══╝ ╚╝ ╚╝╚╝"
+    ]
+    
+    from rich.text import Text
+    from rich.align import Align
+    
+    # Let's use the shadow style with soft blue gradient
+    for i, line in enumerate(logo_shadow):
+        styled_text = Text()
+        
+        # Create smooth gradient effect with soft blue tones
+        for j, char in enumerate(line):
+            # Calculate position for gradient (0.0 to 1.0)
+            pos = j / max(1, len(line) - 1)
+            
+            if char not in [' ', '╚', '╔', '╝', '╗', '═', '║']:
+                # Main blocks - soft blue gradient
+                if pos < 0.1:
+                    color = "#E6F3FF"  # Very light blue
+                elif pos < 0.25:
+                    color = "#B3D9FF"  # Light blue
+                elif pos < 0.4:
+                    color = "#80BFFF"  # Light-medium blue
+                elif pos < 0.55:
+                    color = "#4DA6FF"  # Medium blue
+                elif pos < 0.7:
+                    color = "#1A8CFF"  # Medium-dark blue
+                elif pos < 0.85:
+                    color = "#0066CC"  # Dark blue
+                else:
+                    color = "#004C99"  # Very dark blue
+                styled_text.append(char, style=f"bold {color}")
+            elif char in ['╚', '╔', '╝', '╗', '═', '║']:
+                # Shadow/border elements - subtle grey-blue
+                if pos < 0.5:
+                    styled_text.append(char, style="#99B3CC")
+                else:
+                    styled_text.append(char, style="#668099")
+            else:
+                styled_text.append(char)
+        
+        console.print(Align.center(styled_text))
+    
+    # Add a subtle professional tagline
+    tagline_text = "━━━  AI-POWERED VIDEO ENHANCEMENT  ━━━"
+    tagline = Text()
+    
+    # Soft blue gradient for tagline to match logo
+    for i, char in enumerate(tagline_text):
+        pos = i / max(1, len(tagline_text) - 1)
+        if char == '━':
+            tagline.append(char, style="#668099")  # Subtle grey-blue
+        elif char != ' ':
+            # Soft blue gradient for text
+            if pos < 0.5:
+                tagline.append(char, style="italic #4DA6FF")  # Medium blue
+            else:
+                tagline.append(char, style="italic #1A8CFF")  # Medium-dark blue
+        else:
+            tagline.append(char)
+    
+    console.print(Align.center(tagline))
+    console.print("")  # Empty line after logo
+
 def display_processing_start(input_path: str, output_path: str, mode: str, **kwargs):
     """Display beautiful processing start information."""
     # Clear console more thoroughly for Windows
@@ -200,6 +291,9 @@ def display_processing_start(input_path: str, output_path: str, mode: str, **kwa
     # Reset console and ensure clean display
     console.print("\033[0m")  # Reset all attributes
     console.print("")  # Single blank line
+    
+    # Display ZETTA MEDIA logo
+    display_zetta_logo()
     
     # Determine mode icon and title
     mode_icon = "🎬" if mode == "VIDEO" else "🖼️"
