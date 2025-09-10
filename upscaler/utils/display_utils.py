@@ -138,28 +138,26 @@ def create_two_column_panel(left_data: List[tuple], right_data: List[tuple],
                 return label[:emoji_end], label[emoji_end:].strip()
         return "", label
     
-    # Create a single table with 6 columns for better alignment (emoji + label + value) × 2
+    # Create a single table with 4 columns for better alignment
     table = Table(
         show_header=False,
         box=None,
-        padding=(0, 1),
+        padding=(0, 2),  # Padding between columns
         expand=True,
         pad_edge=False,
         show_edge=False
     )
     
-    # Add columns - emoji columns narrow, label/value columns wider
-    table.add_column("E1", width=2, style="", no_wrap=True)  # Left emoji
-    table.add_column("L1", style=COLORS['info'], width=12, no_wrap=True)  # Left label
-    table.add_column("V1", style=COLORS['highlight'], width=20)  # Left value
-    table.add_column("E2", width=2, style="", no_wrap=True)  # Right emoji  
-    table.add_column("L2", style=COLORS['accent'], width=12, no_wrap=True)  # Right label
-    table.add_column("V2", style=COLORS['highlight'], width=20)  # Right value
+    # Add columns - combine emoji with label
+    table.add_column("L1", style=COLORS['info'], width=18, no_wrap=True)  # Left label with emoji
+    table.add_column("V1", style=COLORS['highlight'], width=22)  # Left value
+    table.add_column("L2", style=COLORS['accent'], width=18, no_wrap=True)  # Right label with emoji
+    table.add_column("V2", style=COLORS['highlight'], width=22)  # Right value
     
     # Add section headers
     table.add_row(
-        "", f"[bold {COLORS['info']}]── {left_title} ──[/bold {COLORS['info']}]", "",
-        "", f"[bold {COLORS['accent']}]── {right_title} ──[/bold {COLORS['accent']}]", ""
+        f"[bold {COLORS['info']}]── {left_title} ──[/bold {COLORS['info']}]", "",
+        f"[bold {COLORS['accent']}]── {right_title} ──[/bold {COLORS['accent']}]", ""
     )
     
     # Add data rows
@@ -167,19 +165,19 @@ def create_two_column_panel(left_data: List[tuple], right_data: List[tuple],
     for i in range(max_rows):
         # Process left side
         if i < len(left_data):
-            left_emoji, left_text = extract_emoji_and_text(left_data[i][0])
+            left_label = left_data[i][0]
             left_value = str(left_data[i][1])
         else:
-            left_emoji, left_text, left_value = "", "", ""
+            left_label, left_value = "", ""
             
         # Process right side
         if i < len(right_data):
-            right_emoji, right_text = extract_emoji_and_text(right_data[i][0])
+            right_label = right_data[i][0]
             right_value = str(right_data[i][1]) 
         else:
-            right_emoji, right_text, right_value = "", "", ""
+            right_label, right_value = "", ""
         
-        table.add_row(left_emoji, left_text, left_value, right_emoji, right_text, right_value)
+        table.add_row(left_label, left_value, right_label, right_value)
     
     return Panel(
         table,
@@ -298,24 +296,27 @@ def display_video_info(video_info: Dict[str, Any], label: str = "Video Informati
         bitrate_mbps = video_info['bitrate'] / 1_000_000
         video_data.append(("📶", "Bitrate", f"{bitrate_mbps:.2f} Mbps"))
     
-    # Create table with 3 columns (emoji, label, value)
+    # Create table with 2 columns (emoji+label, value)
     table = Table(
         show_header=False,
         box=None,
-        padding=(0, 1),
+        padding=(0, 1),  # Small padding between columns
         expand=True,
         show_edge=False,
         pad_edge=False  # Don't pad to edge
     )
     
-    # Three columns with proper spacing
-    table.add_column("", width=3, style="", no_wrap=True)  # Emoji column (increased for safety)
-    table.add_column("", width=15, style=COLORS['info'], no_wrap=True)  # Label column 
+    # Two columns: emoji+label combined, value separate
+    table.add_column("", width=18, style=COLORS['info'], no_wrap=True)  # Combined emoji+label
     table.add_column("", style=COLORS['highlight'])  # Value column
     
-    # Add rows
+    # Add rows with emoji and label combined
     for emoji, label_text, value in video_data:
-        table.add_row(emoji, label_text, value)
+        # Add extra space for narrow emojis to align with others
+        if emoji in ["🎞", "⏱"]:
+            table.add_row(f"{emoji}  {label_text}", value)  # Double space
+        else:
+            table.add_row(f"{emoji} {label_text}", value)  # Single space
     
     # Create panel
     panel = Panel(
@@ -323,7 +324,7 @@ def display_video_info(video_info: Dict[str, Any], label: str = "Video Informati
         title=f"[bold {COLORS['info']}]{label}[/bold {COLORS['info']}]",
         box=box.ROUNDED,
         border_style=COLORS['info'],
-        padding=(0, 2),
+        padding=(0, 1),  # Reduced padding for tighter layout
         expand=True
     )
     
