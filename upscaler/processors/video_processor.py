@@ -7,7 +7,7 @@ import json
 import time
 from pathlib import Path
 from typing import Optional, Dict, Any
-from tqdm import tqdm
+# from tqdm import tqdm  # Replaced with rich.progress
 import tempfile
 import os
 
@@ -17,7 +17,8 @@ from ..utils.video import get_video_info, get_ffmpeg_path, Y4MReader, Y4MWriter
 from ..utils.display_utils import (
     display_processing_start, display_video_info, 
     display_processing_complete, display_backend_info,
-    print_info, print_success, print_warning
+    print_info, print_success, print_warning,
+    create_progress, console
 )
 
 
@@ -74,8 +75,10 @@ class VideoProcessor:
         out_height = video_info['height'] * scale
         
         # Display output video information
-        print_info("Output Resolution", f"{out_width} x {out_height}", indent=2)
-        print_info("Upscale Factor", f"{scale}x", indent=2)
+        console.print("")
+        print_info("🎯 Output Resolution", f"{out_width} × {out_height}")
+        print_info("📏 Upscale Factor", f"{scale}x")
+        console.print("")
         
         logger.info(f"Output video: {out_width}x{out_height}")
         
@@ -85,7 +88,8 @@ class VideoProcessor:
         # Display backend information
         backend_info = {
             'device': getattr(self.backend, 'device', 'CPU'),
-            'cuda_available': getattr(self.backend, 'cuda_available', False)
+            'cuda_available': getattr(self.backend, 'cuda_available', False),
+            'gpu_name': getattr(self.backend, 'gpu_name', None)
         }
         display_backend_info(self.backend.__class__.__name__, backend_info)
         
@@ -203,12 +207,42 @@ class VideoProcessor:
                 # Setup progress tracking
                 total_frames = video_info.get('nb_frames', 0)
                 progress_format = self.kwargs.get('progress', 'bar')
+                frame_count = 0
+                start_time = time.time()
                 
                 if progress_format == 'bar' and total_frames > 0:
-                    pbar = tqdm(total=total_frames, desc="Upscaling", unit="frame")
-                
-                frame_count = 0
-                try:
+                    with create_progress() as progress:
+                        task = progress.add_task("🎬 Upscaling frames", total=total_frames)
+                        
+                        while True:
+                            frame_data = y4m_reader.read_frame()
+                            if frame_data is None:
+                                break
+                            
+                            # Convert YUV to RGB
+                            frame_rgb = self._yuv420p_to_rgb(frame_data, header['width'], header['height'])
+                            
+                            # Upscale
+                            upscaled_rgb = self.backend.upscale(frame_rgb)
+                            
+                            # Face enhancement if requested
+                            if self.kwargs.get('face_enhance', False):
+                                upscaled_rgb = self._enhance_faces(upscaled_rgb)
+                            
+                            # Convert back to YUV
+                            upscaled_yuv = self._rgb_to_yuv420p(upscaled_rgb)
+                            
+                            # Write frame
+                            y4m_writer.write_frame(upscaled_yuv)
+                            
+                            frame_count += 1
+                            
+                            # Update progress
+                            elapsed = time.time() - start_time
+                            speed = frame_count / elapsed if elapsed > 0 else 0
+                            progress.update(task, advance=1, speed=speed)
+                else:
+                    # No progress bar mode
                     while True:
                         frame_data = y4m_reader.read_frame()
                         if frame_data is None:
@@ -232,16 +266,10 @@ class VideoProcessor:
                         
                         frame_count += 1
                         
-                        # Update progress
-                        if progress_format == 'bar' and total_frames > 0:
-                            pbar.update(1)
-                        elif progress_format == 'json':
-                            progress = frame_count / total_frames if total_frames > 0 else 0
-                            print(f'{{"status": "processing", "progress": {progress:.3f}, "frame": {frame_count}}}')
-                
-                finally:
-                    if progress_format == 'bar' and total_frames > 0:
-                        pbar.close()
+                        # JSON progress update
+                        if progress_format == 'json':
+                            json_progress = frame_count / total_frames if total_frames > 0 else 0
+                            print(f'{{"status": "processing", "progress": {json_progress:.3f}, "frame": {frame_count}}}')
                 
                 logger.info(f"Processed {frame_count} frames")
     

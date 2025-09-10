@@ -16,6 +16,7 @@ facexlib>=0.3.0
 # Display utilities
 colorama>=0.4.6
 humanize>=4.9.0
+rich>=13.7.0
 
 # Model management
 gdown>=4.7.0

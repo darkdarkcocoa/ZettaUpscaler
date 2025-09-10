@@ -129,7 +129,18 @@ class TorchBackendOfficial(BaseBackend):
         # Official enhance method handles everything (tiling, data conversion, etc.)
         # Input: BGR uint8, Output: BGR uint8
         try:
-            output, _ = self.upscaler.enhance(image, outscale=self.scale)
+            # Temporarily suppress stdout to hide "Tile X/Y" messages
+            import sys
+            import io
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            
+            try:
+                output, _ = self.upscaler.enhance(image, outscale=self.scale)
+            finally:
+                # Restore stdout
+                sys.stdout = old_stdout
+                
             logger.debug(f"Upscaled from {image.shape} to {output.shape}")
             return output
         except Exception as e:

@@ -190,6 +190,9 @@ nul
 # Claude Code settings (personal)
 .claude/
 
+# Personal development diary
+dev_diary_*.md
+
 # Keep only source code and documentation
 !upscaler/**/*.py
 !requirements.txt

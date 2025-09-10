@@ -4,13 +4,14 @@ import logging
 import time
 from pathlib import Path
 from typing import Optional
-from tqdm import tqdm
+# from tqdm import tqdm  # Replaced with rich
 
 from ..backends import get_backend
 from ..models import ModelManager
 from ..utils.display_utils import (
     display_processing_start, display_processing_complete,
-    display_backend_info, print_info, print_success, print_warning
+    display_backend_info, print_info, print_success, print_warning,
+    console
 )
 
 
@@ -46,8 +47,10 @@ class ImageProcessor:
         
         # Display input image information
         height, width, channels = image_bgr.shape
-        print_info("Input Resolution", f"{width} x {height}", indent=2)
-        print_info("Color Channels", f"{channels} channels", indent=2)
+        console.print("")
+        print_info("🖼️ Input Resolution", f"{width} × {height}")
+        print_info("🎨 Color Channels", f"{channels} channels")
+        console.print("")
         
         # [TEST] Try RGB format - Real-ESRGAN might expect RGB (Grok4 opinion)
         image_for_processing = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
