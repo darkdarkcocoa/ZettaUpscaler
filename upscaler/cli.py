@@ -156,9 +156,11 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
     import os
     from pathlib import Path
     from .processors import ImageProcessor, VideoProcessor
-    from .utils.display_utils import create_progress, console
+    from .utils.display_utils import create_progress, console, make_video_info_panel
     from .utils.video import get_video_info
     from rich.panel import Panel
+    from rich.console import Group
+    from rich.live import Live
     
     # 지원하는 파일 확장자
     image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.tiff', '.tif'}
@@ -243,15 +245,28 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # 처리 시작
-    from .utils.display_utils import display_zetta_logo
-    display_zetta_logo()  # 배치 처리 시작 시 로고 표시
+    try:
+        from .utils.display_utils import display_zetta_logo
+        display_zetta_logo()  # 배치 처리 시작 시 로고 표시
+    except Exception as e:
+        console.print(f"[yellow]Logo display error: {e}[/yellow]")
     console.print(Panel(f"🚀 {len(target_files)}개 파일 업스케일링 시작!", style="bold green"))
     
     success_count = 0
     error_count = 0
     processed_frames = 0
     
-    with create_progress() as progress:
+    # Progress를 컨텍스트로 사용하지 않고 Live가 그려줌
+    progress = create_progress()
+    
+    # 초기 placeholder 패널
+    placeholder = make_video_info_panel(
+        {'width': 0, 'height': 0, 'fps': 0.0, 'total_frames': None, 'duration': None, 'codec': None, 'bitrate': None},
+        "Input Video Information", None
+    )
+    group = Group(placeholder, progress)  # 패널을 위로, Progress를 아래로
+    
+    with Live(group, console=console, auto_refresh=False) as live:
         # Total Progress는 전체 프레임 수로 설정
         task = progress.add_task(f"[cyan]🚀 Total Progress", total=total_frames)
         
@@ -260,12 +275,33 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
                 # 출력 파일의 디렉토리 생성
                 output_file.parent.mkdir(parents=True, exist_ok=True)
                 
-                # Processing 메시지는 제거 - progress bar에서 충분히 표시됨
+                # 현재 파일 정보로 패널 업데이트
+                if is_video:
+                    vi = get_video_info(str(input_file))
+                    panel = make_video_info_panel(vi, "Input Video Information", str(input_file))
+                else:
+                    # 이미지일 때는 간단한 정보 읽기
+                    try:
+                        import cv2
+                        img = cv2.imread(str(input_file))
+                        if img is not None:
+                            height, width = img.shape[:2]
+                            vi = {'width': width, 'height': height, 'fps': 0.0, 'total_frames': 1}
+                        else:
+                            vi = {'width': 0, 'height': 0, 'fps': 0.0, 'total_frames': 1}
+                    except Exception:
+                        # cv2 import 실패 시 기본값
+                        vi = {'width': 0, 'height': 0, 'fps': 0.0, 'total_frames': 1}
+                    panel = make_video_info_panel(vi, "Input Image Information", str(input_file))
+                
+                live.update(Group(panel, progress))  # 패널을 위로, Progress를 아래로
+                live.refresh()
                 
                 if is_video:
                     processor = VideoProcessor(
                         global_progress=progress, 
                         global_task=task,
+                        global_live=live,
                         file_frames=frame_count,
                         processed_frames=processed_frames,
                         total_frames=total_frames,
@@ -277,6 +313,7 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
                     processor = ImageProcessor(
                         global_progress=progress, 
                         global_task=task,
+                        global_live=live,
                         file_frames=frame_count,
                         processed_frames=processed_frames,
                         total_frames=total_frames,
@@ -295,6 +332,7 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
                 # 에러 발생 시에도 프레임 수는 증가시켜 전체 진행률 유지
                 processed_frames += frame_count
                 progress.update(task, completed=processed_frames)
+                live.refresh()
             
             finally:
                 # 개별 파일 태스크 정리는 프로세서 내부에서 처리

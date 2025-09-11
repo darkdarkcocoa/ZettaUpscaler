@@ -20,14 +20,15 @@ logger = logging.getLogger(__name__)
 class ImageProcessor:
     """Process single images for upscaling."""
     
-    def __init__(self, global_progress=None, global_task=None, file_frames=0,
-                 processed_frames=0, total_frames=0, file_index=0, 
-                 total_files=0, **kwargs):
+    def __init__(self, global_progress=None, global_task=None, global_live=None,
+                 file_frames=0, processed_frames=0, total_frames=0, 
+                 file_index=0, total_files=0, **kwargs):
         self.kwargs = kwargs
         self.backend = None
         self.model_manager = ModelManager()
         self.global_progress = global_progress
         self.global_task = global_task
+        self.global_live = global_live
         self.file_frames = file_frames
         self.processed_frames = processed_frames
         self.total_frames = total_frames
@@ -37,6 +38,7 @@ class ImageProcessor:
     def process(self, input_path: str, output_path: str) -> None:
         """Process a single image."""
         start_time = time.time()
+        self.current_input_path = input_path  # Store for progress display
         
         # Display processing start information only if not part of batch
         if not self.global_progress:
@@ -73,8 +75,8 @@ class ImageProcessor:
             'device': getattr(self.backend, 'device', 'CPU'),
             'cuda_available': getattr(self.backend, 'cuda_available', False)
         }
-        # Display backend info only for first file in batch
-        if not self.global_progress or self.file_index == 1:
+        # Display backend info only for single file processing
+        if not self.global_progress:
             display_backend_info(self.backend.__class__.__name__, backend_info)
         
         # Calculate output dimensions

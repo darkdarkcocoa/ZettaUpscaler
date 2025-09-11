@@ -29,9 +29,9 @@ class VideoProcessor:
     """Process videos for upscaling."""
     
     def __init__(self, stdin: bool = False, stdout: bool = False, 
-                 global_progress=None, global_task=None, file_frames=0,
-                 processed_frames=0, total_frames=0, file_index=0,
-                 total_files=0, **kwargs):
+                 global_progress=None, global_task=None, global_live=None,
+                 file_frames=0, processed_frames=0, total_frames=0, 
+                 file_index=0, total_files=0, **kwargs):
         self.stdin = stdin
         self.stdout = stdout
         self.kwargs = kwargs
@@ -39,6 +39,7 @@ class VideoProcessor:
         self.model_manager = ModelManager()
         self.global_progress = global_progress
         self.global_task = global_task
+        self.global_live = global_live
         self.file_frames = file_frames
         self.processed_frames = processed_frames
         self.total_frames = total_frames
@@ -48,6 +49,7 @@ class VideoProcessor:
     def process(self, input_path: str, output_path: str) -> None:
         """Process a video file or stream."""
         start_time = time.time()
+        self.current_input_path = input_path  # Store for progress display
         
         # Display processing start information
         if not self.stdin and not self.stdout and not self.global_progress:
@@ -74,9 +76,9 @@ class VideoProcessor:
         # Get video info
         video_info = get_video_info(input_path)
         
-        # Display input video information (only for first file in batch)
-        if not self.global_progress or self.file_index == 1:
-            display_video_info(video_info, "Input Video Information")
+        # Display input video information (only for single file processing)
+        if not self.global_progress:
+            display_video_info(video_info, "Input Video Information", input_path)
         
         logger.info(f"Input video: {video_info['width']}x{video_info['height']} @ {video_info['fps']:.2f}fps")
         
@@ -85,8 +87,8 @@ class VideoProcessor:
         out_width = video_info['width'] * scale
         out_height = video_info['height'] * scale
         
-        # Display output video information (only for first file in batch)
-        if not self.global_progress or self.file_index == 1:
+        # Display output video information (only for single file processing)
+        if not self.global_progress:
             console.print("")
             print_info("🎯 Output Resolution", f"{out_width} × {out_height}")
             print_info("📏 Upscale Factor", f"{scale}x")
@@ -97,13 +99,13 @@ class VideoProcessor:
         # Get backend
         self.backend = get_backend(**self.kwargs)
         
-        # Display backend information (only for first file in batch)
+        # Display backend information (only for single file processing)
         backend_info = {
             'device': getattr(self.backend, 'device', 'CPU'),
             'cuda_available': getattr(self.backend, 'cuda_available', False),
             'gpu_name': getattr(self.backend, 'gpu_name', None)
         }
-        if not self.global_progress or self.file_index == 1:
+        if not self.global_progress:
             display_backend_info(self.backend.__class__.__name__, backend_info)
             print_success(f"Backend initialized: {self.backend.__class__.__name__}")
         
@@ -168,8 +170,8 @@ class VideoProcessor:
                     if frame_count % 10 == 0:
                         logger.info(f"Processed {frame_count} frames")
                 
-                # Clear Windows Terminal progress indicator only if not part of batch
-                if not self.global_progress:
+                # Clear Windows Terminal progress indicator only if not part of batch and not using Live
+                if not self.global_progress and self.global_live is None:
                     set_windows_terminal_progress(0, state=0)  # Hide progress
                 
                 logger.info(f"Stream processing completed: {frame_count} frames")
@@ -283,12 +285,17 @@ class VideoProcessor:
                             # Time-based screen refresh
                             current_time = time.perf_counter()
                             if current_time >= next_refresh_time or frame_count == total_frames:
-                                progress.refresh()  # Manual refresh
+                                # Live가 화면을 소유한다면 Live를, 아니면 Progress를 새로고침
+                                if self.global_live is not None:
+                                    self.global_live.refresh()
+                                else:
+                                    progress.refresh()
                                 next_refresh_time = current_time + REFRESH_INTERVAL
                                 
-                                # Update Windows Terminal progress indicator
-                                percent = (frame_count / total_frames) * 100 if total_frames else 0
-                                set_windows_terminal_progress(percent)
+                                # Update Windows Terminal progress indicator (only if not using Live)
+                                if self.global_live is None:
+                                    percent = (frame_count / total_frames) * 100 if total_frames else 0
+                                    set_windows_terminal_progress(percent)
                     finally:
                         # Mark sub-task as completed (100%)
                         if (self.global_progress is not None) and ('task' in locals()):
@@ -336,8 +343,8 @@ class VideoProcessor:
                 
                 logger.info(f"Processed {frame_count} frames")
                 
-                # Clear Windows Terminal progress indicator only if not part of batch
-                if not self.global_progress:
+                # Clear Windows Terminal progress indicator only if not part of batch and not using Live
+                if not self.global_progress and self.global_live is None:
                     set_windows_terminal_progress(0, state=0)  # Hide progress
     
     def _extract_and_stream(self, input_path: str, y4m_writer: Y4MWriter, video_info: Dict[str, Any]) -> None:

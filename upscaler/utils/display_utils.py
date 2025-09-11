@@ -385,10 +385,14 @@ def display_processing_start(input_path: str, output_path: str, mode: str, **kwa
     console.print(output_panel)
     console.print("")
 
-def display_video_info(video_info: Dict[str, Any], label: str = "Video Information"):
-    """Display video information in a beautiful panel."""
+def make_video_info_panel(video_info: Dict[str, Any], label: str = "Input Video Information", file_path: Optional[str] = None) -> Panel:
+    """Build (not print) a video info panel renderable."""
     # Build data list with emojis separated
     video_data = []
+    
+    # File name (if provided)
+    if file_path:
+        video_data.append(("📁", "File Name", Path(file_path).name))
     
     # Resolution
     video_data.append(("🎥", "Resolution", f"{video_info['width']} × {video_info['height']}"))
@@ -453,6 +457,12 @@ def display_video_info(video_info: Dict[str, Any], label: str = "Video Informati
         expand=True
     )
     
+    return panel
+
+
+def display_video_info(video_info: Dict[str, Any], label: str = "Video Information", file_path: Optional[str] = None):
+    """Legacy: print the video info panel to console."""
+    panel = make_video_info_panel(video_info, label, file_path)
     console.print(panel)
     console.print("")
 
