@@ -41,20 +41,20 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 
 ### 2️⃣ 사용법
 
-설치 완료 후 `upscaler.bat`로 실행:
+설치 완료 후 `upscale.bat`로 실행:
 
 ```bash
 # 이미지 업스케일링 (4배)
-upscaler image input.jpg output.jpg --scale 4
+upscale image input.jpg output.jpg --scale 4
 
 # 2배로 업스케일링 (더 빠름)
-upscaler image photo.jpg photo_2x.jpg --scale 2
+upscale image photo.jpg photo_2x.jpg --scale 2
 
 # 영상 업스케일링 (오디오 포함)
-upscaler video input.mp4 output.mp4 --scale 4
+upscale video input.mp4 output.mp4 --scale 4
 
 # GPU 가속 확인
-upscaler doctor
+upscale doctor
 ```
 
 ### 3️⃣ 어디서든 사용하기
@@ -65,7 +65,7 @@ upscaler doctor
 add-to-path.bat
 
 # 이제 어디서든 사용 가능!
-upscaler image C:\Photos\vacation.jpg C:\Photos\vacation_4k.jpg
+upscale image C:\Photos\vacation.jpg C:\Photos\vacation_4k.jpg
 ```
 
 ## 📊 성능
@@ -81,13 +81,13 @@ RTX 4090 기준:
 
 ```bash
 # 모든 옵션 보기
-upscaler --help
+upscale --help
 
 # 사용 가능한 모델 확인
-upscaler models --list
+upscale models --list
 
 # 시스템 진단
-upscaler doctor
+upscale doctor
 ```
 
 ### 주요 옵션
@@ -101,17 +101,17 @@ upscaler doctor
 
 ### 사진 고화질화
 ```bash
-upscaler image family_photo.jpg family_photo_hd.jpg --model realesrgan-x4plus
+upscale image family_photo.jpg family_photo_hd.jpg --model realesrgan-x4plus
 ```
 
 ### 애니메이션 업스케일
 ```bash
-upscaler image anime.png anime_4k.png --model realesrgan-x4plus-anime
+upscale image anime.png anime_4k.png --model realesrgan-x4plus-anime
 ```
 
 ### 영상 업스케일 (오디오 포함)
 ```bash
-upscaler video vacation.mp4 vacation_4k.mp4 --scale 4 --copy-audio
+upscale video vacation.mp4 vacation_4k.mp4 --scale 4 --copy-audio
 ```
 
 ## ⚠️ 주의사항
@@ -125,7 +125,7 @@ upscaler video vacation.mp4 vacation_4k.mp4 --scale 4 --copy-audio
 
 ### "CUDA: Not Available" 표시
 - GPU는 사용 중이지만 표시 오류일 수 있음
-- `upscaler doctor`로 실제 상태 확인
+- `upscale doctor`로 실제 상태 확인
 
 ### Python 버전 충돌 (ComfyUI 등)
 ```bash
@@ -136,7 +136,7 @@ py -3.12 -m pip install ...
 ### 메모리 부족
 ```bash
 # 타일 크기 줄이기
-upscaler image input.jpg output.jpg --tile 256
+upscale image input.jpg output.jpg --tile 256
 ```
 
 ## 📦 모델 정보
