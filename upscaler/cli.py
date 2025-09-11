@@ -135,8 +135,8 @@ def models(list_models, download, check):
 @cli.command()
 @click.option('--type', type=click.Choice(['all', 'image', 'video']), default='all',
               help='처리할 파일 타입 (기본: all)')
-@click.option('--output', type=click.Path(), default='./upscaled',
-              help='출력 폴더 경로 (기본: ./upscaled)')
+@click.option('--output', type=click.Path(), default='./output',
+              help='출력 폴더 경로 (기본: ./output)')
 @click.option('--backend', type=click.Choice(['auto', 'torch', 'ncnn']), default='auto',
               help='업스케일링에 사용할 백엔드')
 @click.option('--model', default='realesr-general-x4v3',
@@ -175,9 +175,9 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
     # 파일 검색
     current_dir = Path('.')
     if recursive:
-        files = current_dir.rglob(pattern)
+        files = list(current_dir.rglob(pattern))
     else:
-        files = current_dir.glob(pattern)
+        files = list(current_dir.glob(pattern))
     
     # 처리할 파일 필터링
     target_files = []
@@ -234,14 +234,14 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
     error_count = 0
     
     with create_progress() as progress:
-        task = progress.add_task(f"[cyan]전체 진행률", total=len(target_files))
+        task = progress.add_task(f"[cyan]🚀 Total Progress", total=len(target_files))
         
         for i, (input_file, output_file, is_video) in enumerate(target_files, 1):
             try:
                 # 출력 파일의 디렉토리 생성
                 output_file.parent.mkdir(parents=True, exist_ok=True)
                 
-                console.print(f"\n[{i}/{len(target_files)}] 처리 중: {input_file}")
+                console.print(f"\n📍 Processing [{i}/{len(target_files)}]: {input_file}")
                 
                 if is_video:
                     processor = VideoProcessor(**kwargs)

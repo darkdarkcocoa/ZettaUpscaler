@@ -132,7 +132,7 @@ upscale all --pattern "DSC*.jpg"
 upscale all --recursive
 
 # 출력 폴더 지정
-upscale all --output D:\Upscaled
+upscale all --output D:\Output
 
 # 미리보기 (실제 처리하지 않고 대상 파일만 표시)
 upscale all --dry-run
