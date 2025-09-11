@@ -29,8 +29,9 @@ class VideoProcessor:
     """Process videos for upscaling."""
     
     def __init__(self, stdin: bool = False, stdout: bool = False, 
-                 global_progress=None, global_task=None, file_weight=0, 
-                 file_index=0, total_files=0, **kwargs):
+                 global_progress=None, global_task=None, file_frames=0,
+                 processed_frames=0, total_frames=0, file_index=0,
+                 total_files=0, **kwargs):
         self.stdin = stdin
         self.stdout = stdout
         self.kwargs = kwargs
@@ -38,7 +39,9 @@ class VideoProcessor:
         self.model_manager = ModelManager()
         self.global_progress = global_progress
         self.global_task = global_task
-        self.file_weight = file_weight
+        self.file_frames = file_frames
+        self.processed_frames = processed_frames
+        self.total_frames = total_frames
         self.file_index = file_index
         self.total_files = total_files
     
@@ -47,7 +50,7 @@ class VideoProcessor:
         start_time = time.time()
         
         # Display processing start information
-        if not self.stdin and not self.stdout:
+        if not self.stdin and not self.stdout and not self.global_progress:
             display_processing_start(input_path, output_path, "VIDEO", **self.kwargs)
         
         logger.info(f"Processing video: {input_path} -> {output_path}")
@@ -60,7 +63,7 @@ class VideoProcessor:
             self._process_file(input_path, output_path)
         
         # Display completion information
-        if not self.stdin and not self.stdout:
+        if not self.stdin and not self.stdout and not self.global_progress:
             end_time = time.time()
             self.kwargs['backend_used'] = self.backend.__class__.__name__ if self.backend else 'unknown'
             display_processing_complete(input_path, output_path, "VIDEO", 
@@ -71,8 +74,9 @@ class VideoProcessor:
         # Get video info
         video_info = get_video_info(input_path)
         
-        # Display input video information
-        display_video_info(video_info, "Input Video Information")
+        # Display input video information (only for first file in batch)
+        if not self.global_progress or self.file_index == 1:
+            display_video_info(video_info, "Input Video Information")
         
         logger.info(f"Input video: {video_info['width']}x{video_info['height']} @ {video_info['fps']:.2f}fps")
         
@@ -81,26 +85,27 @@ class VideoProcessor:
         out_width = video_info['width'] * scale
         out_height = video_info['height'] * scale
         
-        # Display output video information
-        console.print("")
-        print_info("🎯 Output Resolution", f"{out_width} × {out_height}")
-        print_info("📏 Upscale Factor", f"{scale}x")
-        console.print("")
+        # Display output video information (only for first file in batch)
+        if not self.global_progress or self.file_index == 1:
+            console.print("")
+            print_info("🎯 Output Resolution", f"{out_width} × {out_height}")
+            print_info("📏 Upscale Factor", f"{scale}x")
+            console.print("")
         
         logger.info(f"Output video: {out_width}x{out_height}")
         
         # Get backend
         self.backend = get_backend(**self.kwargs)
         
-        # Display backend information
+        # Display backend information (only for first file in batch)
         backend_info = {
             'device': getattr(self.backend, 'device', 'CPU'),
             'cuda_available': getattr(self.backend, 'cuda_available', False),
             'gpu_name': getattr(self.backend, 'gpu_name', None)
         }
-        display_backend_info(self.backend.__class__.__name__, backend_info)
-        
-        print_success(f"Backend initialized: {self.backend.__class__.__name__}")
+        if not self.global_progress or self.file_index == 1:
+            display_backend_info(self.backend.__class__.__name__, backend_info)
+            print_success(f"Backend initialized: {self.backend.__class__.__name__}")
         
         # Create temporary files for processing
         with tempfile.TemporaryDirectory(prefix='upscaler_') as temp_dir:
@@ -216,7 +221,7 @@ class VideoProcessor:
                 y4m_writer.write_header()
                 
                 # Setup progress tracking
-                total_frames = video_info.get('nb_frames', 0)
+                total_frames = video_info.get('nb_frames', 0) or self.file_frames or 0
                 progress_format = self.kwargs.get('progress', 'bar')
                 frame_count = 0
                 start_time = time.time()
@@ -225,7 +230,7 @@ class VideoProcessor:
                     # Use global progress if available, otherwise create new one
                     if self.global_progress:
                         progress = self.global_progress
-                        # Add sub-task for this video
+                        # Add sub-task for this video with file index
                         task = progress.add_task(f"🎬 [{self.file_index}/{self.total_files}] Upscaling frames", total=total_frames)
                         use_context_manager = False
                     else:
@@ -270,11 +275,10 @@ class VideoProcessor:
                             progress.update(task, advance=1, speed=speed)
                             
                             # Update global progress if available
-                            if self.global_progress and self.global_task:
-                                # Calculate overall progress
-                                file_progress = frame_count / total_frames
-                                overall_progress = (self.file_index - 1 + file_progress) * self.file_weight
-                                self.global_progress.update(self.global_task, completed=overall_progress * self.total_files)
+                            if (self.global_progress is not None) and (self.global_task is not None):
+                                # Update total progress based on actual frames processed
+                                current_total_frames = self.processed_frames + frame_count
+                                self.global_progress.update(self.global_task, completed=current_total_frames)
                             
                             # Time-based screen refresh
                             current_time = time.perf_counter()
@@ -283,9 +287,20 @@ class VideoProcessor:
                                 next_refresh_time = current_time + REFRESH_INTERVAL
                                 
                                 # Update Windows Terminal progress indicator
-                                percent = (frame_count / total_frames) * 100
+                                percent = (frame_count / total_frames) * 100 if total_frames else 0
                                 set_windows_terminal_progress(percent)
                     finally:
+                        # Mark sub-task as completed (100%)
+                        if (self.global_progress is not None) and ('task' in locals()):
+                            progress.update(task, completed=total_frames)
+                            # Stop task instead of removing to prevent screen refresh
+                            try:
+                                # Rich 13+ supports visible=False
+                                progress.update(task, visible=False)
+                            except TypeError:
+                                # Fallback for older versions
+                                progress.stop_task(task)
+                        
                         # Clean up context manager if we created one
                         if use_context_manager and 'progress_context' in locals():
                             progress_context.__exit__(None, None, None)

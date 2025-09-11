@@ -4,7 +4,6 @@ import logging
 import time
 from pathlib import Path
 from typing import Optional
-# from tqdm import tqdm  # Replaced with rich
 
 from ..backends import get_backend
 from ..models import ModelManager
@@ -21,14 +20,17 @@ logger = logging.getLogger(__name__)
 class ImageProcessor:
     """Process single images for upscaling."""
     
-    def __init__(self, global_progress=None, global_task=None, file_weight=0, 
-                 file_index=0, total_files=0, **kwargs):
+    def __init__(self, global_progress=None, global_task=None, file_frames=0,
+                 processed_frames=0, total_frames=0, file_index=0, 
+                 total_files=0, **kwargs):
         self.kwargs = kwargs
         self.backend = None
         self.model_manager = ModelManager()
         self.global_progress = global_progress
         self.global_task = global_task
-        self.file_weight = file_weight
+        self.file_frames = file_frames
+        self.processed_frames = processed_frames
+        self.total_frames = total_frames
         self.file_index = file_index
         self.total_files = total_files
     
@@ -52,12 +54,13 @@ class ImageProcessor:
         if image_bgr is None:
             raise ValueError(f"Could not load image: {input_path}")
         
-        # Display input image information
+        # Display input image information (only for first file in batch)
         height, width, channels = image_bgr.shape
-        console.print("")
-        print_info("🖼️ Input Resolution", f"{width} × {height}")
-        print_info("🎨 Color Channels", f"{channels} channels")
-        console.print("")
+        if not self.global_progress or self.file_index == 1:
+            console.print("")
+            print_info("🖼️ Input Resolution", f"{width} × {height}")
+            print_info("🎨 Color Channels", f"{channels} channels")
+            console.print("")
         
         # [TEST] Try RGB format - Real-ESRGAN might expect RGB (Grok4 opinion)
         image_for_processing = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
@@ -70,26 +73,38 @@ class ImageProcessor:
             'device': getattr(self.backend, 'device', 'CPU'),
             'cuda_available': getattr(self.backend, 'cuda_available', False)
         }
-        # Display backend info only if not part of batch
-        if not self.global_progress:
+        # Display backend info only for first file in batch
+        if not self.global_progress or self.file_index == 1:
             display_backend_info(self.backend.__class__.__name__, backend_info)
         
         # Calculate output dimensions
         scale = self.kwargs.get('scale', 4)
         out_width = width * scale
         out_height = height * scale
-        print_info("Output Resolution", f"{out_width} x {out_height}", indent=2)
-        print_info("Upscale Factor", f"{scale}x", indent=2)
+        if not self.global_progress or self.file_index == 1:
+            print_info("Output Resolution", f"{out_width} x {out_height}", indent=2)
+            print_info("Upscale Factor", f"{scale}x", indent=2)
         
         # Process image
         with self.backend:
             logger.info(f"Upscaling with backend: {self.backend.__class__.__name__}")
-            print_success(f"Backend initialized: {self.backend.__class__.__name__}")
+            if not self.global_progress or self.file_index == 1:
+                print_success(f"Backend initialized: {self.backend.__class__.__name__}")
             
             # Setup progress bar
             progress_format = self.kwargs.get('progress', 'bar')
             if progress_format == 'bar':
-                pbar = tqdm(total=1, desc="Upscaling in progress", unit="image")
+                # Add sub-task for this image if global progress exists
+                if self.global_progress:
+                    image_task = self.global_progress.add_task(f"🖼️ [{self.file_index}/{self.total_files}] Upscaling image", total=1)
+                    use_local_progress = False
+                else:
+                    # Create local progress bar if not part of batch
+                    from rich.progress import Progress
+                    local_progress = Progress()
+                    local_progress.start()
+                    image_task = local_progress.add_task("🖼️ Upscaling image", total=1)
+                    use_local_progress = True
             
             try:
                 # Upscale (returns RGB since input is RGB)
@@ -130,18 +145,28 @@ class ImageProcessor:
                     raise RuntimeError(f"Failed to save image: {output_path}")
                 
                 if progress_format == 'bar':
-                    pbar.update(1)
-                    pbar.close()
+                    # Mark image task as completed and hide it
+                    if (self.global_progress is not None) and ('image_task' in locals()):
+                        self.global_progress.update(image_task, completed=1)
+                        try:
+                            # Rich 13+ supports visible=False
+                            self.global_progress.update(image_task, visible=False)
+                        except TypeError:
+                            # Fallback for older versions
+                            self.global_progress.stop_task(image_task)
+                    elif use_local_progress and 'local_progress' in locals():
+                        local_progress.update(image_task, completed=1)
+                        local_progress.stop()
                 elif progress_format == 'json':
                     print(f'{{"status": "completed", "progress": 1.0, "message": "Image upscaling completed"}}')
                 
                 logger.info(f"Image upscaling completed: {output_path}")
                 
                 # Update global progress if available
-                if self.global_progress and self.global_task:
-                    # Image is processed completely, update to full file weight
-                    overall_progress = self.file_index * self.file_weight
-                    self.global_progress.update(self.global_task, completed=overall_progress * self.total_files)
+                if (self.global_progress is not None) and (self.global_task is not None):
+                    # Image is processed completely (1 frame)
+                    current_total_frames = self.processed_frames + self.file_frames
+                    self.global_progress.update(self.global_task, completed=current_total_frames)
                 
                 # Display completion information only if not part of batch
                 end_time = time.time()
@@ -151,8 +176,9 @@ class ImageProcessor:
                                                start_time, end_time, **self.kwargs)
                 
             except Exception as e:
-                if progress_format == 'bar' and 'pbar' in locals():
-                    pbar.close()
+                if progress_format == 'bar':
+                    if use_local_progress and 'local_progress' in locals():
+                        local_progress.stop()
                 raise e
     
     def _enhance_faces(self, image: np.ndarray) -> np.ndarray:

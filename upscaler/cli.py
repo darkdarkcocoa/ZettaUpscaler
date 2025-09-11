@@ -157,7 +157,7 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
     from pathlib import Path
     from .processors import ImageProcessor, VideoProcessor
     from .utils.display_utils import create_progress, console
-    from rich.table import Table
+    from .utils.video import get_video_info
     from rich.panel import Panel
     
     # 지원하는 파일 확장자
@@ -207,25 +207,32 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
         console.print(f"[yellow]⚠️ 처리할 파일을 찾을 수 없습니다. (타입: {type}, 패턴: {pattern})[/yellow]")
         return
     
-    # 파일 목록 표시
-    table = Table(title=f"🎯 처리할 파일 목록 ({len(target_files)}개)")
-    table.add_column("📁 파일명", style="cyan")
-    table.add_column("📊 크기", style="green")
-    table.add_column("🎨 타입", style="yellow")
+    # 프레임 수 계산 (백그라운드에서 진행, 화면 출력 없음)
+    total_frames = 0
+    file_frame_counts = []
     
-    total_size = 0
     for file, _, is_video in target_files:
-        file_size = file.stat().st_size
-        total_size += file_size
-        size_str = f"{file_size / 1024 / 1024:.1f} MB"
-        type_str = "🎥 비디오" if is_video else "🖼️ 이미지"
-        table.add_row(str(file), size_str, type_str)
-    
-    console.print(table)
-    console.print(f"\n💾 총 크기: {total_size / 1024 / 1024:.1f} MB")
+        if is_video:
+            # 비디오 파일의 프레임 수 가져오기
+            try:
+                video_info = get_video_info(str(file))
+                frame_count = video_info.get('nb_frames', 0)
+                if frame_count == 0:
+                    # nb_frames가 없으면 duration과 fps로 계산
+                    duration = video_info.get('duration', 0)
+                    fps = video_info.get('fps', 30)
+                    frame_count = int(duration * fps)
+            except Exception:
+                frame_count = 100  # 기본값
+        else:
+            # 이미지는 1 프레임으로 계산
+            frame_count = 1
+        
+        file_frame_counts.append(frame_count)
+        total_frames += frame_count
     
     if dry_run:
-        console.print("\n[cyan]ℹ️ --dry-run 모드: 실제 처리는 수행하지 않습니다.[/cyan]")
+        console.print(f"\n[cyan]ℹ️ --dry-run 모드: {len(target_files)}개 파일 발견 (실제 처리는 수행하지 않음)[/cyan]")
         return
     
     # 출력 폴더 생성 - 원래 실행 디렉토리 기준
@@ -236,29 +243,32 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # 처리 시작
+    from .utils.display_utils import display_zetta_logo
+    display_zetta_logo()  # 배치 처리 시작 시 로고 표시
     console.print(Panel(f"🚀 {len(target_files)}개 파일 업스케일링 시작!", style="bold green"))
     
     success_count = 0
     error_count = 0
+    processed_frames = 0
     
     with create_progress() as progress:
-        task = progress.add_task(f"[cyan]🚀 Total Progress", total=len(target_files))
+        # Total Progress는 전체 프레임 수로 설정
+        task = progress.add_task(f"[cyan]🚀 Total Progress", total=total_frames)
         
-        for i, (input_file, output_file, is_video) in enumerate(target_files, 1):
+        for i, ((input_file, output_file, is_video), frame_count) in enumerate(zip(target_files, file_frame_counts), 1):
             try:
                 # 출력 파일의 디렉토리 생성
                 output_file.parent.mkdir(parents=True, exist_ok=True)
                 
-                console.print(f"\n📍 Processing [{i}/{len(target_files)}]: {input_file}")
-                
-                # 전체 진행률을 위한 가중치 계산
-                file_weight = 1.0 / len(target_files)
+                # Processing 메시지는 제거 - progress bar에서 충분히 표시됨
                 
                 if is_video:
                     processor = VideoProcessor(
                         global_progress=progress, 
                         global_task=task,
-                        file_weight=file_weight,
+                        file_frames=frame_count,
+                        processed_frames=processed_frames,
+                        total_frames=total_frames,
                         file_index=i,
                         total_files=len(target_files),
                         **kwargs
@@ -267,7 +277,9 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
                     processor = ImageProcessor(
                         global_progress=progress, 
                         global_task=task,
-                        file_weight=file_weight,
+                        file_frames=frame_count,
+                        processed_frames=processed_frames,
+                        total_frames=total_frames,
                         file_index=i,
                         total_files=len(target_files),
                         **kwargs
@@ -275,13 +287,17 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
                 
                 processor.process(str(input_file), str(output_file))
                 success_count += 1
+                processed_frames += frame_count
                 
             except Exception as e:
                 error_count += 1
                 console.print(f"[red]❌ 오류 발생: {input_file} - {str(e)}[/red]")
+                # 에러 발생 시에도 프레임 수는 증가시켜 전체 진행률 유지
+                processed_frames += frame_count
+                progress.update(task, completed=processed_frames)
             
             finally:
-                # 전체 진행률 업데이트는 각 프로세서 내부에서 처리
+                # 개별 파일 태스크 정리는 프로세서 내부에서 처리
                 pass
     
     # 최종 결과 표시
