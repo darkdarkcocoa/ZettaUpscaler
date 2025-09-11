@@ -105,7 +105,7 @@ class VideoProcessor:
             'cuda_available': getattr(self.backend, 'cuda_available', False),
             'gpu_name': getattr(self.backend, 'gpu_name', None)
         }
-        if not self.global_progress:
+        if not self.global_progress or self.file_index == 1:
             display_backend_info(self.backend.__class__.__name__, backend_info)
             print_success(f"Backend initialized: {self.backend.__class__.__name__}")
         

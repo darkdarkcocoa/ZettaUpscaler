@@ -75,8 +75,8 @@ class ImageProcessor:
             'device': getattr(self.backend, 'device', 'CPU'),
             'cuda_available': getattr(self.backend, 'cuda_available', False)
         }
-        # Display backend info only for single file processing
-        if not self.global_progress:
+        # Display backend info for single file or first file in batch
+        if not self.global_progress or self.file_index == 1:
             display_backend_info(self.backend.__class__.__name__, backend_info)
         
         # Calculate output dimensions
