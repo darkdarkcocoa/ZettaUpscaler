@@ -18,7 +18,7 @@ from ..utils.display_utils import (
     display_processing_start, display_video_info, 
     display_processing_complete, display_backend_info,
     print_info, print_success, print_warning,
-    create_progress, console
+    create_progress, console, set_windows_terminal_progress
 )
 
 
@@ -156,6 +156,9 @@ class VideoProcessor:
                     if frame_count % 10 == 0:
                         logger.info(f"Processed {frame_count} frames")
                 
+                # Clear Windows Terminal progress indicator
+                set_windows_terminal_progress(0, state=0)  # Hide progress
+                
                 logger.info(f"Stream processing completed: {frame_count} frames")
     
     def _process_stdout_stream(self, input_path: str) -> None:
@@ -214,6 +217,10 @@ class VideoProcessor:
                     with create_progress() as progress:
                         task = progress.add_task("🎬 Upscaling frames", total=total_frames)
                         
+                        # Time-based refresh control (80ms intervals)
+                        next_refresh_time = 0.0
+                        REFRESH_INTERVAL = 0.08  # 80ms for smooth updates without flicker
+                        
                         while True:
                             frame_data = y4m_reader.read_frame()
                             if frame_data is None:
@@ -237,10 +244,22 @@ class VideoProcessor:
                             
                             frame_count += 1
                             
-                            # Update progress
+                            # Calculate speed
                             elapsed = time.time() - start_time
                             speed = frame_count / elapsed if elapsed > 0 else 0
+                            
+                            # Update progress internally (no refresh)
                             progress.update(task, advance=1, speed=speed)
+                            
+                            # Time-based screen refresh
+                            current_time = time.perf_counter()
+                            if current_time >= next_refresh_time or frame_count == total_frames:
+                                progress.refresh()  # Manual refresh
+                                next_refresh_time = current_time + REFRESH_INTERVAL
+                                
+                                # Update Windows Terminal progress indicator
+                                percent = (frame_count / total_frames) * 100
+                                set_windows_terminal_progress(percent)
                 else:
                     # No progress bar mode
                     while True:
@@ -272,6 +291,9 @@ class VideoProcessor:
                             print(f'{{"status": "processing", "progress": {json_progress:.3f}, "frame": {frame_count}}}')
                 
                 logger.info(f"Processed {frame_count} frames")
+                
+                # Clear Windows Terminal progress indicator
+                set_windows_terminal_progress(0, state=0)  # Hide progress
     
     def _extract_and_stream(self, input_path: str, y4m_writer: Y4MWriter, video_info: Dict[str, Any]) -> None:
         """Extract and stream frames to stdout."""

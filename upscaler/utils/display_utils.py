@@ -42,8 +42,33 @@ from rich.style import Style
 from rich.columns import Columns
 from rich.live import Live
 
-# Initialize Rich console
-console = Console(legacy_windows=True if sys.platform == 'win32' else None)
+# Initialize Rich console with optimized settings for Windows
+# Check if running in Windows Terminal (WT_SESSION env var)
+is_windows_terminal = os.environ.get('WT_SESSION') is not None
+
+console = Console(
+    # Use legacy mode only for old Windows console, not Windows Terminal
+    legacy_windows=False if is_windows_terminal else (True if sys.platform == 'win32' else None),
+    force_terminal=True,  # Force terminal mode for better control
+    soft_wrap=False  # Disable soft wrap for more stable rendering
+)
+
+def set_windows_terminal_progress(percent: float, state: int = 1):
+    """
+    Set Windows Terminal tab/taskbar progress indicator using OSC 9;4 sequence.
+    
+    Args:
+        percent: Progress percentage (0-100)
+        state: 0=hide, 1=normal, 2=error, 3=indeterminate, 4=warning
+    
+    This only works in Windows Terminal, not in legacy console.
+    """
+    if is_windows_terminal:
+        # Clamp percentage to 0-100
+        percent = max(0, min(100, int(percent)))
+        # Send OSC 9;4 sequence
+        sys.stdout.write(f"\x1b]9;4;{state};{percent}\x07")
+        sys.stdout.flush()
 
 # Color scheme
 COLORS = {
@@ -59,12 +84,18 @@ COLORS = {
 }
 
 class SpeedColumn(ProgressColumn):
-    """Custom column to show processing speed."""
+    """Custom column to show processing speed with fixed width."""
+    
+    def __init__(self):
+        # Fixed width to prevent layout shifts
+        from rich.table import Column
+        super().__init__(table_column=Column(width=10, no_wrap=True, justify="right"))
     
     def render(self, task):
         """Render the speed."""
         speed = task.fields.get('speed', 0.0)
-        return Text(f"{speed:.1f} fps", style="bright_yellow")
+        # Fixed width format to prevent flickering
+        return Text(f"{speed:5.1f} fps", style="bright_yellow")
 
 def format_file_size(size_bytes: int) -> str:
     """Format file size in human readable format."""
@@ -468,7 +499,7 @@ def display_processing_complete(input_path: str, output_path: str, mode: str,
     summary_data = [
         ("🤖 Model", kwargs.get('model', 'realesr-general-x4v3')),
         ("📏 Scale", f"{kwargs.get('scale', 4)}x"),
-        ("⚙ Backend", kwargs.get('backend_used', 'Unknown')),  # Removed modifier
+        ("⚙  Backend", kwargs.get('backend_used', 'Unknown')),  # Removed modifier, added space
     ]
     
     results_panel = create_two_column_panel(
@@ -527,16 +558,21 @@ def display_backend_info(backend_name: str, backend_info: Dict[str, Any]):
     console.print(panel)
 
 def create_progress() -> Progress:
-    """Create a beautiful progress bar."""
-    return Progress(
-        SpinnerColumn(style=COLORS['primary']),
+    """Create a beautiful progress bar with minimal flickering."""
+    # Decide whether to include spinner based on platform
+    columns = []
+    
+    # Skip spinner on Windows to reduce flicker (optional - comment out if you want spinner)
+    if sys.platform != 'win32':
+        columns.append(SpinnerColumn(style=COLORS['primary'], speed=1.2))
+    
+    columns.extend([
         TextColumn("[bold cyan]{task.description}[/bold cyan]"),
         BarColumn(
             style=COLORS['primary'],
             complete_style=COLORS['success'],
             finished_style=COLORS['success'],
-            pulse_style=COLORS['accent'],
-            bar_width=None  # Use full width
+            bar_width=40  # Fixed width to prevent layout shifts
         ),
         TaskProgressColumn(),
         TextColumn("•"),
@@ -546,10 +582,17 @@ def create_progress() -> Progress:
         TextColumn("•"),
         TimeRemainingColumn(),
         TextColumn("•"),
-        SpeedColumn(),
+        SpeedColumn(),  # Now with fixed width
+    ])
+    
+    return Progress(
+        *columns,
         console=console,
-        expand=True,
-        transient=False  # Keep progress bar visible
+        expand=False,  # Don't expand - prevents width fluctuations
+        transient=True,  # Update in-place to reduce flicker
+        auto_refresh=False,  # KEY: Manual refresh control only!
+        redirect_stdout=False,  # Don't redirect stdout
+        redirect_stderr=False   # Don't redirect stderr
     )
 
 # Convenience functions for backward compatibility
