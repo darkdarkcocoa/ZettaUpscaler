@@ -133,6 +133,141 @@ def models(list_models, download, check):
 
 
 @cli.command()
+@click.option('--type', type=click.Choice(['all', 'image', 'video']), default='all',
+              help='처리할 파일 타입 (기본: all)')
+@click.option('--output', type=click.Path(), default='./upscaled',
+              help='출력 폴더 경로 (기본: ./upscaled)')
+@click.option('--backend', type=click.Choice(['auto', 'torch', 'ncnn']), default='auto',
+              help='업스케일링에 사용할 백엔드')
+@click.option('--model', default='realesr-general-x4v3',
+              help='업스케일링에 사용할 모델')
+@click.option('--scale', type=int, default=4,
+              help='업스케일링 배율')
+@click.option('--recursive', is_flag=True,
+              help='하위 폴더도 포함하여 처리')
+@click.option('--pattern', default='*',
+              help='파일명 패턴 (예: *.mp4, DSC*.jpg)')
+@click.option('--skip-existing', is_flag=True,
+              help='이미 처리된 파일 건너뛰기')
+@click.option('--dry-run', is_flag=True,
+              help='실제 처리하지 않고 대상 파일만 표시')
+def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
+    """현재 폴더의 모든 미디어 파일 업스케일링"""
+    import os
+    from pathlib import Path
+    from .processors import ImageProcessor, VideoProcessor
+    from .utils.display_utils import create_progress, console
+    from rich.table import Table
+    from rich.panel import Panel
+    
+    # 지원하는 파일 확장자
+    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.tiff', '.tif'}
+    video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.wmv'}
+    
+    # 타입별 확장자 필터링
+    if type == 'image':
+        valid_extensions = image_extensions
+    elif type == 'video':
+        valid_extensions = video_extensions
+    else:  # 'all'
+        valid_extensions = image_extensions | video_extensions
+    
+    # 파일 검색
+    current_dir = Path('.')
+    if recursive:
+        files = current_dir.rglob(pattern)
+    else:
+        files = current_dir.glob(pattern)
+    
+    # 처리할 파일 필터링
+    target_files = []
+    for file in files:
+        if file.is_file() and file.suffix.lower() in valid_extensions:
+            # 출력 경로 생성
+            output_dir = Path(output)
+            if recursive:
+                # 하위 폴더 구조 유지
+                relative_dir = file.parent.relative_to(current_dir)
+                output_file = output_dir / relative_dir / f"{file.stem}_upscaled{file.suffix}"
+            else:
+                output_file = output_dir / f"{file.stem}_upscaled{file.suffix}"
+            
+            # 이미 처리된 파일 체크
+            if skip_existing and output_file.exists():
+                continue
+                
+            target_files.append((file, output_file, file.suffix.lower() in video_extensions))
+    
+    if not target_files:
+        console.print(f"[yellow]⚠️ 처리할 파일을 찾을 수 없습니다. (타입: {type}, 패턴: {pattern})[/yellow]")
+        return
+    
+    # 파일 목록 표시
+    table = Table(title=f"🎯 처리할 파일 목록 ({len(target_files)}개)")
+    table.add_column("📁 파일명", style="cyan")
+    table.add_column("📊 크기", style="green")
+    table.add_column("🎨 타입", style="yellow")
+    
+    total_size = 0
+    for file, _, is_video in target_files:
+        file_size = file.stat().st_size
+        total_size += file_size
+        size_str = f"{file_size / 1024 / 1024:.1f} MB"
+        type_str = "🎥 비디오" if is_video else "🖼️ 이미지"
+        table.add_row(str(file), size_str, type_str)
+    
+    console.print(table)
+    console.print(f"\n💾 총 크기: {total_size / 1024 / 1024:.1f} MB")
+    
+    if dry_run:
+        console.print("\n[cyan]ℹ️ --dry-run 모드: 실제 처리는 수행하지 않습니다.[/cyan]")
+        return
+    
+    # 출력 폴더 생성
+    output_dir = Path(output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 처리 시작
+    console.print(Panel(f"🚀 {len(target_files)}개 파일 업스케일링 시작!", style="bold green"))
+    
+    success_count = 0
+    error_count = 0
+    
+    with create_progress() as progress:
+        task = progress.add_task(f"[cyan]전체 진행률", total=len(target_files))
+        
+        for i, (input_file, output_file, is_video) in enumerate(target_files, 1):
+            try:
+                # 출력 파일의 디렉토리 생성
+                output_file.parent.mkdir(parents=True, exist_ok=True)
+                
+                console.print(f"\n[{i}/{len(target_files)}] 처리 중: {input_file}")
+                
+                if is_video:
+                    processor = VideoProcessor(**kwargs)
+                else:
+                    processor = ImageProcessor(**kwargs)
+                
+                processor.process(str(input_file), str(output_file))
+                success_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                console.print(f"[red]❌ 오류 발생: {input_file} - {str(e)}[/red]")
+            
+            finally:
+                progress.update(task, advance=1)
+    
+    # 최종 결과 표시
+    console.print(Panel(
+        f"✅ 완료: {success_count}개 성공, {error_count}개 실패\n"
+        f"📁 출력 폴더: {output_dir.absolute()}",
+        title="🎉 배치 처리 완료!",
+        style="bold green" if error_count == 0 else "bold yellow"
+    ))
+
+
+@cli.command()
 def doctor():
     """시스템 기능 및 구성 확인"""
     from .diagnostics import SystemDiagnostics

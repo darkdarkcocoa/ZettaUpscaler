@@ -114,6 +114,40 @@ upscale image anime.png anime_4k.png --model realesrgan-x4plus-anime
 upscale video vacation.mp4 vacation_4k.mp4 --scale 4 --copy-audio
 ```
 
+### 📁 폴더 일괄 처리 (NEW!)
+```bash
+# 현재 폴더의 모든 미디어 파일 업스케일
+upscale all
+
+# 비디오 파일만 처리
+upscale all --type video
+
+# 이미지 파일만 처리
+upscale all --type image
+
+# 특정 패턴의 파일만 처리
+upscale all --pattern "DSC*.jpg"
+
+# 하위 폴더까지 포함하여 처리
+upscale all --recursive
+
+# 출력 폴더 지정
+upscale all --output D:\Upscaled
+
+# 미리보기 (실제 처리하지 않고 대상 파일만 표시)
+upscale all --dry-run
+
+# 이미 처리된 파일은 건너뛰기
+upscale all --skip-existing
+```
+
+**일괄 처리 기능:**
+- 🎯 현재 폴더에서 바로 실행
+- 📊 처리 전 파일 목록과 크기 표시
+- 📈 전체 진행률 추적
+- ⚡ 오류 발생 시에도 나머지 파일 계속 처리
+- 📁 출력 폴더 자동 생성
+
 ## ⚠️ 주의사항
 
 1. **Python 버전**: Python 3.12 필수 (3.10/3.11은 호환성 문제 발생)

@@ -33,7 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 upscaler/
 ├── __main__.py        # python -m upscaler 실행 진입점
-├── cli.py             # Click 기반 CLI 인터페이스 (image, video, doctor, models 명령어)
+├── cli.py             # Click 기반 CLI 인터페이스 (image, video, all, doctor, models 명령어)
 ├── backends/          # 업스케일링 백엔드 구현
 │   ├── torch_backend_official.py  # RealESRGANer 공식 구현 (우선순위 1)
 │   ├── torch_backend.py          # PyTorch 백엔드 (우선순위 2)
@@ -79,8 +79,14 @@ pip install -r requirements.txt
 python -m upscaler image input.jpg output.jpg --scale 4
 python -m upscaler video input.mp4 output.mp4 --scale 4
 
+# 폴더 일괄 처리 (NEW!)
+python -m upscaler all
+python -m upscaler all --type video --recursive
+python -m upscaler all --dry-run
+
 # 배치 파일로 실행 (Windows)
 upscale image input.jpg output.jpg --scale 4
+upscale all --type image
 
 # 시스템 진단
 python -m upscaler doctor
