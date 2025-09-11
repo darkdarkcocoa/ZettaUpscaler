@@ -28,12 +28,19 @@ logger = logging.getLogger(__name__)
 class VideoProcessor:
     """Process videos for upscaling."""
     
-    def __init__(self, stdin: bool = False, stdout: bool = False, **kwargs):
+    def __init__(self, stdin: bool = False, stdout: bool = False, 
+                 global_progress=None, global_task=None, file_weight=0, 
+                 file_index=0, total_files=0, **kwargs):
         self.stdin = stdin
         self.stdout = stdout
         self.kwargs = kwargs
         self.backend = None
         self.model_manager = ModelManager()
+        self.global_progress = global_progress
+        self.global_task = global_task
+        self.file_weight = file_weight
+        self.file_index = file_index
+        self.total_files = total_files
     
     def process(self, input_path: str, output_path: str) -> None:
         """Process a video file or stream."""
@@ -156,8 +163,9 @@ class VideoProcessor:
                     if frame_count % 10 == 0:
                         logger.info(f"Processed {frame_count} frames")
                 
-                # Clear Windows Terminal progress indicator
-                set_windows_terminal_progress(0, state=0)  # Hide progress
+                # Clear Windows Terminal progress indicator only if not part of batch
+                if not self.global_progress:
+                    set_windows_terminal_progress(0, state=0)  # Hide progress
                 
                 logger.info(f"Stream processing completed: {frame_count} frames")
     
@@ -214,9 +222,19 @@ class VideoProcessor:
                 start_time = time.time()
                 
                 if progress_format == 'bar' and total_frames > 0:
-                    with create_progress() as progress:
+                    # Use global progress if available, otherwise create new one
+                    if self.global_progress:
+                        progress = self.global_progress
+                        # Add sub-task for this video
+                        task = progress.add_task(f"🎬 [{self.file_index}/{self.total_files}] Upscaling frames", total=total_frames)
+                        use_context_manager = False
+                    else:
+                        progress_context = create_progress()
+                        progress = progress_context.__enter__()
                         task = progress.add_task("🎬 Upscaling frames", total=total_frames)
-                        
+                        use_context_manager = True
+                    
+                    try:
                         # Time-based refresh control (80ms intervals)
                         next_refresh_time = 0.0
                         REFRESH_INTERVAL = 0.08  # 80ms for smooth updates without flicker
@@ -251,6 +269,13 @@ class VideoProcessor:
                             # Update progress internally (no refresh)
                             progress.update(task, advance=1, speed=speed)
                             
+                            # Update global progress if available
+                            if self.global_progress and self.global_task:
+                                # Calculate overall progress
+                                file_progress = frame_count / total_frames
+                                overall_progress = (self.file_index - 1 + file_progress) * self.file_weight
+                                self.global_progress.update(self.global_task, completed=overall_progress * self.total_files)
+                            
                             # Time-based screen refresh
                             current_time = time.perf_counter()
                             if current_time >= next_refresh_time or frame_count == total_frames:
@@ -260,6 +285,10 @@ class VideoProcessor:
                                 # Update Windows Terminal progress indicator
                                 percent = (frame_count / total_frames) * 100
                                 set_windows_terminal_progress(percent)
+                    finally:
+                        # Clean up context manager if we created one
+                        if use_context_manager and 'progress_context' in locals():
+                            progress_context.__exit__(None, None, None)
                 else:
                     # No progress bar mode
                     while True:
@@ -292,8 +321,9 @@ class VideoProcessor:
                 
                 logger.info(f"Processed {frame_count} frames")
                 
-                # Clear Windows Terminal progress indicator
-                set_windows_terminal_progress(0, state=0)  # Hide progress
+                # Clear Windows Terminal progress indicator only if not part of batch
+                if not self.global_progress:
+                    set_windows_terminal_progress(0, state=0)  # Hide progress
     
     def _extract_and_stream(self, input_path: str, y4m_writer: Y4MWriter, video_info: Dict[str, Any]) -> None:
         """Extract and stream frames to stdout."""

@@ -21,17 +21,24 @@ logger = logging.getLogger(__name__)
 class ImageProcessor:
     """Process single images for upscaling."""
     
-    def __init__(self, **kwargs):
+    def __init__(self, global_progress=None, global_task=None, file_weight=0, 
+                 file_index=0, total_files=0, **kwargs):
         self.kwargs = kwargs
         self.backend = None
         self.model_manager = ModelManager()
+        self.global_progress = global_progress
+        self.global_task = global_task
+        self.file_weight = file_weight
+        self.file_index = file_index
+        self.total_files = total_files
     
     def process(self, input_path: str, output_path: str) -> None:
         """Process a single image."""
         start_time = time.time()
         
-        # Display processing start information
-        display_processing_start(input_path, output_path, "IMAGE", **self.kwargs)
+        # Display processing start information only if not part of batch
+        if not self.global_progress:
+            display_processing_start(input_path, output_path, "IMAGE", **self.kwargs)
         
         logger.info(f"Processing image: {input_path} -> {output_path}")
         
@@ -63,7 +70,9 @@ class ImageProcessor:
             'device': getattr(self.backend, 'device', 'CPU'),
             'cuda_available': getattr(self.backend, 'cuda_available', False)
         }
-        display_backend_info(self.backend.__class__.__name__, backend_info)
+        # Display backend info only if not part of batch
+        if not self.global_progress:
+            display_backend_info(self.backend.__class__.__name__, backend_info)
         
         # Calculate output dimensions
         scale = self.kwargs.get('scale', 4)
@@ -128,11 +137,18 @@ class ImageProcessor:
                 
                 logger.info(f"Image upscaling completed: {output_path}")
                 
-                # Display completion information
+                # Update global progress if available
+                if self.global_progress and self.global_task:
+                    # Image is processed completely, update to full file weight
+                    overall_progress = self.file_index * self.file_weight
+                    self.global_progress.update(self.global_task, completed=overall_progress * self.total_files)
+                
+                # Display completion information only if not part of batch
                 end_time = time.time()
                 self.kwargs['backend_used'] = self.backend.__class__.__name__
-                display_processing_complete(input_path, output_path, "IMAGE", 
-                                           start_time, end_time, **self.kwargs)
+                if not self.global_progress:
+                    display_processing_complete(input_path, output_path, "IMAGE", 
+                                               start_time, end_time, **self.kwargs)
                 
             except Exception as e:
                 if progress_format == 'bar' and 'pbar' in locals():

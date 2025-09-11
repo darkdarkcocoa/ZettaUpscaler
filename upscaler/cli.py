@@ -172,8 +172,9 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
     else:  # 'all'
         valid_extensions = image_extensions | video_extensions
     
-    # 파일 검색
-    current_dir = Path('.')
+    # 파일 검색 - 원래 실행 디렉토리 사용
+    original_dir = os.environ.get('UPSCALER_ORIGINAL_DIR', '.')
+    current_dir = Path(original_dir)
     if recursive:
         files = list(current_dir.rglob(pattern))
     else:
@@ -183,8 +184,12 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
     target_files = []
     for file in files:
         if file.is_file() and file.suffix.lower() in valid_extensions:
-            # 출력 경로 생성
-            output_dir = Path(output)
+            # 출력 경로 생성 - 원래 실행 디렉토리 기준
+            if Path(output).is_absolute():
+                output_dir = Path(output)
+            else:
+                output_dir = current_dir / output
+            
             if recursive:
                 # 하위 폴더 구조 유지
                 relative_dir = file.parent.relative_to(current_dir)
@@ -223,8 +228,11 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
         console.print("\n[cyan]ℹ️ --dry-run 모드: 실제 처리는 수행하지 않습니다.[/cyan]")
         return
     
-    # 출력 폴더 생성
-    output_dir = Path(output)
+    # 출력 폴더 생성 - 원래 실행 디렉토리 기준
+    if Path(output).is_absolute():
+        output_dir = Path(output)
+    else:
+        output_dir = current_dir / output
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # 처리 시작
@@ -243,10 +251,27 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
                 
                 console.print(f"\n📍 Processing [{i}/{len(target_files)}]: {input_file}")
                 
+                # 전체 진행률을 위한 가중치 계산
+                file_weight = 1.0 / len(target_files)
+                
                 if is_video:
-                    processor = VideoProcessor(**kwargs)
+                    processor = VideoProcessor(
+                        global_progress=progress, 
+                        global_task=task,
+                        file_weight=file_weight,
+                        file_index=i,
+                        total_files=len(target_files),
+                        **kwargs
+                    )
                 else:
-                    processor = ImageProcessor(**kwargs)
+                    processor = ImageProcessor(
+                        global_progress=progress, 
+                        global_task=task,
+                        file_weight=file_weight,
+                        file_index=i,
+                        total_files=len(target_files),
+                        **kwargs
+                    )
                 
                 processor.process(str(input_file), str(output_file))
                 success_count += 1
@@ -256,7 +281,8 @@ def all(type, output, recursive, pattern, skip_existing, dry_run, **kwargs):
                 console.print(f"[red]❌ 오류 발생: {input_file} - {str(e)}[/red]")
             
             finally:
-                progress.update(task, advance=1)
+                # 전체 진행률 업데이트는 각 프로세서 내부에서 처리
+                pass
     
     # 최종 결과 표시
     console.print(Panel(
