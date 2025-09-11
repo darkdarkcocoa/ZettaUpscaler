@@ -163,3 +163,6 @@ MIT License - 자유롭게 사용하세요.
 ---
 
 Made with ❤️ using Real-ESRGAN
+
+---
+⚡ Powered by ZETTA MEDIA
