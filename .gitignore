@@ -130,7 +130,7 @@ dmypy.json
 *.trt
 *.safetensors
 weights/
-models/
+# models/  # 주의: upscaler/models는 소스코드이므로 제외하면 안됨!
 checkpoints/
 *.mp4
 *.avi
