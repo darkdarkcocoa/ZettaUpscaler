@@ -177,14 +177,56 @@ if exist ".venv" (
 echo.
 echo [Step 4/7] Checking GPU support...
 echo --------------------------------------------------------------
-nvidia-smi >nul 2>&1
+
+:: GPU 감지 개선 (여러 방법 시도)
+set "GPU_DETECTED=0"
+set "GPU_NAME=Unknown"
+
+:: 방법 1: nvidia-smi
+where nvidia-smi >nul 2>&1
 if %errorlevel% equ 0 (
-    echo   [OK] NVIDIA GPU detected
-    for /f "tokens=2 delims=:" %%i in ('nvidia-smi ^| findstr "CUDA Version"') do (
-        set CUDA_VERSION=%%i
-        echo       CUDA Version:!CUDA_VERSION!
+    nvidia-smi >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo   [OK] NVIDIA GPU detected via nvidia-smi
+        set "GPU_DETECTED=1"
+        
+        :: GPU 이름 가져오기
+        for /f "tokens=*" %%i in ('nvidia-smi --query-gpu=name --format=csv^,noheader 2^>nul') do (
+            set "GPU_NAME=%%i"
+            echo       GPU: !GPU_NAME!
+        )
+        
+        :: CUDA 버전 확인
+        for /f "tokens=2 delims=:" %%i in ('nvidia-smi ^| findstr "CUDA Version"') do (
+            set CUDA_VERSION=%%i
+            echo       CUDA Version:!CUDA_VERSION!
+        )
     )
-    set "TORCH_INDEX=https://download.pytorch.org/whl/cu121"
+)
+
+:: 방법 2: WMI로 확인 (nvidia-smi 실패시)
+if "!GPU_DETECTED!"=="0" (
+    echo   nvidia-smi not found, checking via Windows...
+    wmic path win32_VideoController get name 2>nul | findstr /i "nvidia" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo   [OK] NVIDIA GPU detected via Windows
+        set "GPU_DETECTED=1"
+    )
+)
+
+:: GPU 감지 결과 확인
+if "!GPU_DETECTED!"=="1" (
+    echo   [OK] GPU support confirmed
+    
+    :: RTX 4090 특별 처리
+    echo !GPU_NAME! | findstr /i "4090" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo   [!] RTX 4090 detected - using optimized settings
+        set "TORCH_INDEX=https://download.pytorch.org/whl/cu121"
+    ) else (
+        set "TORCH_INDEX=https://download.pytorch.org/whl/cu121"
+    )
+    
     set "GPU_SUPPORT=1"
 ) else (
     echo   [ERROR] No NVIDIA GPU detected!
@@ -214,8 +256,15 @@ python -m pip install --upgrade pip >nul 2>&1
 echo   Installing PyTorch... (this may take a few minutes)
 echo   [GPU version - optimized for your NVIDIA card]
 
-:: CUDA 12.1 시도
-pip install torch==2.2.0+cu121 torchvision==0.17.0+cu121 torchaudio==2.2.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+:: RTX 4090 감지시 특별 처리
+echo !GPU_NAME! | findstr /i "4090" >nul 2>&1
+if !errorlevel! equ 0 (
+    echo   [!] RTX 4090 detected - using latest PyTorch with CUDA 12.1
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+) else (
+    :: 일반 GPU용 안정 버전
+    pip install torch==2.2.0+cu121 torchvision==0.17.0+cu121 torchaudio==2.2.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+)
 if %errorlevel% neq 0 (
     echo.
     echo   [WARNING] CUDA 12.1 installation failed, trying CUDA 11.8...
@@ -262,9 +311,43 @@ if %errorlevel% neq 0 (
 echo.
 echo   Installing other packages...
 pip install -r requirements.txt
+if %errorlevel% neq 0 (
+    echo   [WARNING] Some packages may have failed to install
+)
 
+:: basicsr/realesrgan 설치 확인 및 재시도
 echo.
-echo   [OK] All packages installed successfully
+echo   Verifying AI packages installation...
+python -c "import basicsr" 2>nul
+if %errorlevel% neq 0 (
+    echo   [!] basicsr not installed properly, retrying...
+    pip install basicsr --no-cache-dir --force-reinstall
+)
+
+python -c "import realesrgan" 2>nul
+if %errorlevel% neq 0 (
+    echo   [!] realesrgan not installed properly, retrying...
+    pip install realesrgan --no-cache-dir --force-reinstall
+)
+
+:: 최종 확인
+python -c "import basicsr, realesrgan; print('  [OK] AI packages verified')" 2>nul
+if %errorlevel% neq 0 (
+    echo   [WARNING] AI packages installation issues detected
+    echo   You may experience limited functionality
+) else (
+    echo   [OK] All packages installed successfully
+)
+
+:: upscaler 패키지 설치
+echo.
+echo   Installing upscaler package...
+pip install -e .
+if %errorlevel% neq 0 (
+    echo   [ERROR] Failed to install upscaler package!
+    pause
+    exit /b 1
+)
 
 echo.
 echo [Step 6/7] Creating launcher script...
@@ -333,6 +416,16 @@ if /i "!DOWNLOAD_MODELS!"=="Y" (
 )
 
 cls
+:: 설치 검증
+echo.
+echo   Running quick test...
+python -m upscaler doctor >nul 2>&1
+if %errorlevel% equ 0 (
+    echo   [OK] Installation verified!
+) else (
+    echo   [WARNING] Installation may have issues. Run 'upscaler doctor' for details.
+)
+
 echo.
 echo ==============================================================
 echo                  INSTALLATION COMPLETED!
