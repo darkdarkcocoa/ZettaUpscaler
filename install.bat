@@ -58,12 +58,14 @@ echo ==============================================================
 echo                   INSTALLATION IN PROGRESS
 echo ==============================================================
 echo.
-echo [Step 1/7] Checking Python installation...
+echo [Step 1/8] Checking Python installation...
 echo --------------------------------------------------------------
 
 :: Python 3.12 우선 확인
 set "PYTHON_FOUND=0"
 set "PYTHON_VERSION="
+set "PYTHON_MAJOR=0"
+set "PYTHON_MINOR=0"
 
 :: py launcher로 3.12 확인
 where py >nul 2>&1
@@ -84,6 +86,15 @@ if "!PYTHON_FOUND!"=="0" (
         echo   [!] Python !PYTHON_VERSION! found
         echo       Note: Python 3.12 is recommended
         echo       Current: !PYTHON_VERSION!
+        
+        :: Python 3.10+ 호환성 경고
+        for /f "tokens=1-2 delims=." %%a in ("!PYTHON_VERSION!") do (
+            set /a PYTHON_MINOR=%%b
+            if !PYTHON_MINOR! geq 10 (
+                echo       [WARNING] Python 3.10+ may have compatibility issues
+                echo       Recommended: Python 3.8 or 3.9
+            )
+        )
         set "PYTHON_FOUND=1"
     )
 )
@@ -106,7 +117,7 @@ if "!PYTHON_FOUND!"=="0" (
 )
 
 echo.
-echo [Step 2/7] Installing FFmpeg...
+echo [Step 2/8] Installing FFmpeg...
 echo --------------------------------------------------------------
 where ffmpeg >nul 2>&1
 if %errorlevel% equ 0 (
@@ -142,7 +153,24 @@ if %errorlevel% equ 0 (
 )
 
 echo.
-echo [Step 3/7] Creating Python virtual environment...
+echo [Step 3/8] Checking Visual Studio Build Tools...
+echo --------------------------------------------------------------
+:: Visual Studio Build Tools 체크 (Windows에서 basicsr 빌드 필요)
+where cl >nul 2>&1
+if %errorlevel% equ 0 (
+    echo   [OK] Visual Studio Build Tools detected
+) else (
+    echo   [WARNING] Visual Studio Build Tools not found
+    echo   Some packages may fail to install without it.
+    echo   
+    echo   To install:
+    echo   1. Download Visual Studio 2019/2022 Community
+    echo   2. Select "Desktop development with C++" workload
+    echo.
+)
+
+echo.
+echo [Step 4/8] Creating Python virtual environment...
 echo --------------------------------------------------------------
 if exist ".venv" (
     echo.
@@ -175,7 +203,7 @@ if exist ".venv" (
 )
 
 echo.
-echo [Step 4/7] Checking GPU support...
+echo [Step 5/8] Checking GPU support...
 echo --------------------------------------------------------------
 
 :: GPU 감지 개선 (여러 방법 시도)
@@ -243,7 +271,7 @@ if "!GPU_DETECTED!"=="1" (
 )
 
 echo.
-echo [Step 5/7] Installing Python packages...
+echo [Step 6/8] Installing Python packages...
 echo --------------------------------------------------------------
 echo   Activating virtual environment...
 call .venv\Scripts\activate.bat
@@ -251,6 +279,10 @@ call .venv\Scripts\activate.bat
 :: pip 업그레이드
 echo   Upgrading pip...
 python -m pip install --upgrade pip >nul 2>&1
+
+:: numpy 버전 먼저 설치 (basicsr/gfpgan 호환성)
+echo   Installing numpy (compatible version)...
+pip install numpy==1.22.4 --no-cache-dir
 
 :: PyTorch 설치
 echo   Installing PyTorch... (this may take a few minutes)
@@ -350,7 +382,7 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [Step 6/7] Creating launcher script...
+echo [Step 7/8] Creating launcher script...
 echo --------------------------------------------------------------
 :: upscaler.bat이 이미 있는지 확인
 if exist upscaler.bat (
@@ -381,7 +413,7 @@ if exist upscaler.bat (
 )
 
 echo.
-echo [Step 7/7] Setting up PATH helper...
+echo [Step 8/8] Setting up PATH helper...
 echo --------------------------------------------------------------
 :: PATH 추가 헬퍼 파일 생성
 echo @echo off > add-to-path.bat
