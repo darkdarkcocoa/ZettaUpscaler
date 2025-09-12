@@ -193,6 +193,9 @@ nul
 # Personal development diary
 dev_diary_*.md
 
+# Internal planning documents
+TODO.md
+
 # Keep only source code and documentation
 !upscaler/**/*.py
 !requirements.txt
