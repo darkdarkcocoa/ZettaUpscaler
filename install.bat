@@ -206,83 +206,49 @@ echo.
 echo [Step 5/8] Checking GPU support...
 echo --------------------------------------------------------------
 
-:: GPU 감지 개선 (여러 방법 시도)
-set "GPU_DETECTED=0"
-set "GPU_NAME=Unknown"
+:: GPU 감지 시작 (더 간단하게)
+set GPU_FOUND=NO
 
-:: 방법 1: nvidia-smi
-where nvidia-smi >nul 2>&1
-if %errorlevel% equ 0 (
-    nvidia-smi >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo   [OK] NVIDIA GPU detected via nvidia-smi
-        set "GPU_DETECTED=1"
-        
-        :: GPU 이름 가져오기 (에러 처리 추가)
-        set "GPU_NAME=NVIDIA GPU"
-        nvidia-smi --query-gpu=name --format=csv,noheader >temp_gpu.txt 2>nul
-        if !errorlevel! equ 0 (
-            set /p GPU_NAME=<temp_gpu.txt
-            del temp_gpu.txt >nul 2>&1
-        )
-        echo       GPU: !GPU_NAME!
-        
-        :: CUDA 버전 확인 (에러 처리 추가) 
-        set "CUDA_VERSION=Unknown"
-        nvidia-smi >temp_cuda.txt 2>nul
-        if !errorlevel! equ 0 (
-            for /f "tokens=*" %%i in ('type temp_cuda.txt ^| findstr /i "CUDA Version"') do (
-                set "CUDA_LINE=%%i"
-                :: CUDA Version: XX.X 형태에서 버전만 추출
-                for /f "tokens=3" %%j in ("!CUDA_LINE!") do (
-                    set "CUDA_VERSION=%%j"
-                )
-            )
-            del temp_cuda.txt >nul 2>&1
-        )
-        if not "!CUDA_VERSION!"=="Unknown" (
-            echo       CUDA Version: !CUDA_VERSION!
-        )
+:: nvidia-smi 테스트
+nvidia-smi >nul 2>&1
+if !errorlevel! equ 0 (
+    set GPU_FOUND=YES
+    echo   [OK] NVIDIA GPU detected!
+    
+    :: GPU 이름 가져오기 (옵션)
+    set "GPU_NAME=NVIDIA GPU"
+    for /f "tokens=*" %%i in ('nvidia-smi --query-gpu^=name --format^=csv^,noheader 2^>nul') do (
+        set "GPU_NAME=%%i"
+    )
+    echo       GPU: !GPU_NAME!
+    
+    :: 4090 체크
+    echo !GPU_NAME! | findstr /i "4090" >nul && (
+        echo       [!] RTX 4090 detected - using optimized settings
+        set "IS_4090=1"
     )
 )
 
-:: 방법 2: WMI로 확인 (nvidia-smi 실패시)
-if "!GPU_DETECTED!"=="0" (
-    echo   nvidia-smi not found, checking via Windows...
-    wmic path win32_VideoController get name 2>nul | findstr /i "nvidia" >nul 2>&1
+:: WMI 폴백 (nvidia-smi 실패시)
+if "!GPU_FOUND!"=="NO" (
+    echo   nvidia-smi failed, checking Windows devices...
+    wmic path win32_VideoController get name | findstr /i "nvidia" >nul 2>&1
     if !errorlevel! equ 0 (
-        echo   [OK] NVIDIA GPU detected via Windows
-        set "GPU_DETECTED=1"
+        set GPU_FOUND=YES
+        echo   [OK] NVIDIA GPU found via Windows
     )
 )
 
-:: GPU 감지 결과 확인
-if "!GPU_DETECTED!"=="1" (
-    echo   [OK] GPU support confirmed
-    
-    :: RTX 4090 특별 처리 (안전하게)
-    set "IS_4090=0"
-    echo !GPU_NAME! | findstr /i "4090" >nul 2>&1
-    if !errorlevel! equ 0 set "IS_4090=1"
-    
-    if "!IS_4090!"=="1" (
-        echo   [!] RTX 4090 detected - using optimized settings
-    )
-    
-    :: 모든 GPU에 CUDA 12.1 사용
+:: 최종 체크
+if "!GPU_FOUND!"=="YES" (
+    echo   [PASS] GPU check passed - continuing installation
     set "TORCH_INDEX=https://download.pytorch.org/whl/cu121"
-    
-    set "GPU_SUPPORT=1"
 ) else (
     echo   [ERROR] No NVIDIA GPU detected!
     echo.
     echo   This application requires an NVIDIA GPU to run.
-    echo   Please ensure:
-    echo   1. You have an NVIDIA GPU installed (RTX 30/40/50 series recommended)
-    echo   2. NVIDIA drivers are properly installed
-    echo   3. Try running 'nvidia-smi' in command prompt to verify
+    echo   Please ensure you have NVIDIA GPU and drivers installed.
     echo.
-    echo   Installation cannot continue without GPU.
     pause
     exit /b 1
 )
@@ -305,14 +271,9 @@ pip install numpy==1.22.4 --no-cache-dir
 echo   Installing PyTorch... (this may take a few minutes)
 echo   [GPU version - optimized for your NVIDIA card]
 
-:: RTX 4090 감지시 특별 처리 (안전한 방법)
-if defined IS_4090 if "!IS_4090!"=="1" (
-    echo   [!] RTX 4090 detected - using latest PyTorch with CUDA 12.1
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-) else (
-    :: 일반 GPU용 안정 버전
-    pip install torch==2.2.0+cu121 torchvision==0.17.0+cu121 torchaudio==2.2.0+cu121 --index-url https://download.pytorch.org/whl/cu121
-)
+:: PyTorch 설치 (모든 GPU에 최신 버전 사용)
+echo   Installing PyTorch with CUDA 12.1 support...
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 if %errorlevel% neq 0 (
     echo.
     echo   [WARNING] CUDA 12.1 installation failed, trying CUDA 11.8...
