@@ -263,15 +263,11 @@ call .venv\Scripts\activate.bat
 echo   Upgrading pip...
 python -m pip install --upgrade pip >nul 2>&1
 
-:: numpy 버전 먼저 설치 (basicsr/gfpgan 호환성)
-echo   Installing numpy (compatible version)...
-pip install numpy==1.22.4 --no-cache-dir
-
-:: PyTorch 설치
+:: STEP 1: PyTorch GPU 버전 설치 (requirements.txt보다 먼저!)
+:: CRITICAL: Must install PyTorch BEFORE requirements.txt to prevent CPU version override
 echo   Installing PyTorch... (this may take a few minutes)
 echo   [GPU version - optimized for your NVIDIA card]
 
-:: PyTorch 설치 (모든 GPU에 최신 버전 사용)
 echo   Installing PyTorch with CUDA 12.1 support...
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 if %errorlevel% neq 0 (
@@ -294,9 +290,22 @@ if %errorlevel% neq 0 (
     )
 )
 
-:: PyTorch 설치 확인
+:: STEP 2: numpy 설치 (PyTorch와 호환되는 버전)
 echo.
-echo   Verifying PyTorch installation...
+echo   Installing numpy (compatible version)...
+pip install numpy==1.26.4 --no-cache-dir
+
+:: STEP 3: 나머지 패키지 설치 (torch 제외된 requirements.txt)
+echo.
+echo   Installing other packages...
+pip install -r requirements.txt
+if %errorlevel% neq 0 (
+    echo   [WARNING] Some packages may have failed to install
+)
+
+:: STEP 4: PyTorch GPU 버전 최종 확인 (requirements.txt 설치 후)
+echo.
+echo   Verifying PyTorch GPU installation...
 python -c "import torch; print(f'  PyTorch {torch.__version__} installed successfully')" 2>nul
 if %errorlevel% neq 0 (
     echo   [ERROR] PyTorch import failed!
@@ -304,24 +313,16 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: CUDA 사용 가능 여부 확인 
+:: CUDA 사용 가능 여부 확인 (가장 중요!)
 python -c "import torch; cuda_available = torch.cuda.is_available(); print(f'  CUDA Available: {cuda_available}'); exit(0 if cuda_available else 1)" 2>nul
 if %errorlevel% neq 0 (
     echo   [ERROR] GPU detected but CUDA not available in PyTorch!
     echo.
-    echo   This is a critical error. PyTorch cannot use your GPU.
-    echo   Please contact IT support with this error message.
+    echo   This usually means PyTorch was overridden with CPU version.
+    echo   Please check requirements.txt doesn't contain torch/torchvision.
     echo.
     pause
     exit /b 1
-)
-
-:: 나머지 의존성 설치
-echo.
-echo   Installing other packages...
-pip install -r requirements.txt
-if %errorlevel% neq 0 (
-    echo   [WARNING] Some packages may have failed to install
 )
 
 :: basicsr/realesrgan 설치 확인 및 재시도
