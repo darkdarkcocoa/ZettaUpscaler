@@ -140,6 +140,7 @@ checkpoints/
 *.jpeg
 *.png
 *.gif
+!docs/images/*.png
 *.bmp
 output*/
 results/
