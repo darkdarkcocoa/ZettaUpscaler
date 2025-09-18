@@ -238,12 +238,12 @@ upscale all --dry-run
 <table>
 <tr>
 <td align="center">
-<b>원본 (480p)</b><br>
-<img src="https://via.placeholder.com/320x180" width="320">
+<b>원본</b><br>
+<img src="docs/images/before.png" width="400">
 </td>
 <td align="center">
-<b>업스케일 (1920p)</b><br>
-<img src="https://via.placeholder.com/320x180" width="320">
+<b>업스케일 (4x)</b><br>
+<img src="docs/images/after.png" width="400">
 </td>
 </tr>
 </table>
