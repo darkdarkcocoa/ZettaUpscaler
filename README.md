@@ -318,6 +318,31 @@ pip install -r requirements.txt
 </details>
 
 <details>
+<summary><b>basicsr import 오류 (torchvision 호환성)</b></summary>
+
+**오류 메시지:**
+```
+ModuleNotFoundError: No module named 'torchvision.transforms.functional_tensor'
+```
+
+**해결 방법:**
+```bash
+# basicsr 호환성 패치 실행
+python patch_basicsr.py
+
+# 또는 가상환경 안에서
+.venv\Scripts\python patch_basicsr.py  # Windows
+source .venv/bin/activate && python patch_basicsr.py  # Linux/macOS
+```
+
+**문제 원인:**
+- basicsr이 구 버전 torchvision API (`functional_tensor`) 사용
+- torchvision 0.15+ 버전에서 해당 모듈이 `functional`로 통합됨
+- `patch_basicsr.py`가 자동으로 import 경로를 수정해줌
+
+</details>
+
+<details>
 <summary><b>처리 후 비디오에 오디오가 없음</b></summary>
 
 ```bash
