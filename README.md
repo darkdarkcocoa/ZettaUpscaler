@@ -72,7 +72,7 @@
 
 1. **저장소 클론**
    ```bash
-   git clone https://github.com/darkdarkcocoa/ZettaUpscaler.git
+   git clone https://github.com/darkdarkcocoa/zetta-upscaler.git
    cd ZettaUpscaler
    ```
 
@@ -110,7 +110,7 @@
 
 2. **클론 및 설정**
    ```bash
-   git clone https://github.com/darkdarkcocoa/ZettaUpscaler.git
+   git clone https://github.com/darkdarkcocoa/zetta-upscaler.git
    cd ZettaUpscaler
    
    # 가상환경 생성
@@ -369,7 +369,7 @@ ffmpeg -i input.mp4 2>&1 | grep Audio
 
 ```bash
 # 저장소 포크 후:
-git clone https://github.com/darkdarkcocoa/ZettaUpscaler.git
+git clone https://github.com/darkdarkcocoa/zetta-upscaler.git
 cd ZettaUpscaler
 git checkout -b feature/your-feature
 # 변경사항 작성
@@ -395,7 +395,7 @@ git push origin feature/your-feature
 
 **⭐ 유용하다면 Star를 눌러주세요!**
 
-[버그 신고](https://github.com/darkdarkcocoa/ZettaUpscaler/issues) • [기능 요청](https://github.com/darkdarkcocoa/ZettaUpscaler/issues)
+[버그 신고](https://github.com/darkdarkcocoa/zetta-upscaler/issues) • [기능 요청](https://github.com/darkdarkcocoa/zetta-upscaler/issues)
 
 Made with ❤️ by ZETTA MEDIA
 
